@@ -6,6 +6,10 @@ from tqdm import tqdm
 import torch.nn.functional as F
 import torch.nn as nn
 
+# AG import the caption-based clip model
+from clip_debiasing.models.clipcap.model_clipcap import ClipCaptionModel
+
+
 from clip_debiasing.models.model_clipped import CLIP_clipped
 
 from clip_debiasing.models.model_prompt_gender import CLIP_prompt_gender
