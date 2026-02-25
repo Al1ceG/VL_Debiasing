@@ -1,0 +1,3 @@
+data/COCO
+data/facet
+clip_debiasing/models/clipcap/clip_cap_coco_weight.pt
