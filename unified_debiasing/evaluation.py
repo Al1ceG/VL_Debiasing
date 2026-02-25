@@ -1,6 +1,6 @@
 import torch
 import clip
-from utils import FacetDataset, evaluate_recall, evaluate_gender_difference, zero_shot_classifier, calculate_accuracy
+from unified_debiasing.utils import FacetDataset, evaluate_recall, evaluate_gender_difference, zero_shot_classifier, calculate_accuracy
 from torch.utils.data import DataLoader
 import random
 from collections import defaultdict

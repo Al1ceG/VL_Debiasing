@@ -15,7 +15,7 @@ import nltk
 from transformers import GPT2Tokenizer
 
 # import things from the unified paper
-from clip_debiasing.models.clipcap.model_clipcap import clipcap_model
+from clip_debiasing.models.clipcap import model_clipcap
 from clip_debiasing.models.clipcap.clipcap_utils import decide_gender, generate
 import clip
 from unified_debiasing.evaluation import evaluate_image_captioning
@@ -24,17 +24,16 @@ from unified_debiasing.evaluation import evaluate_image_captioning
 def main():
     parser = argparse.ArgumentParser(description="Measure baseline bias of ClipCap (no debiasing).")
     parser.add_argument('--gpu_id', default='0', type=str, help='GPU id to use')
-    # TODO dataset path
     parser.add_argument(
         '--image_dir',
-        default="data/COCO/val2014",
+        default="data/COCO/images/val2014",
         type=str,
         help='Directory containing COCO val2014 images',
     )
-    # TODO results filepath
+
     parser.add_argument(
         '--results_filename',
-        default="result/clip_cap_baseline.csv",
+        default="results/clip_cap_baseline.csv",
         type=str,
         help='Path to save baseline captioning results',
     )
@@ -63,20 +62,18 @@ def main():
     torch.backends.cudnn.benchmarks = False
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-    # TODO MODEL PATH
     # Load ClipCap model and CLIP image encoder
     prefix_length = 10
-    model_path = 'external/clipcap/clip_cap_coco_weight.pt'
+    model_path = 'clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    model = clipcap_model.ClipCaptionModel(prefix_length, device=device)
+    model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
     model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
 
     clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
     model = model.eval().to(device)
 
-    # TODO data filepath
     # Load COCO captions annotations
-    with open('data/COCO/annotations/captions_val2014.json', 'r') as json_data:
+    with open('data/COCO/annotations/instances_val2014.json', 'r') as json_data:
         d = json.load(json_data)
     annotations = d['annotations']
 
