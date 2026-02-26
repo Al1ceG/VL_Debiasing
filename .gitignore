@@ -1,3 +1,7 @@
 data/COCO
 data/facet
 clip_debiasing/models/clipcap/clip_cap_coco_weight.pt
+unified_debiasing/embedding
+unified_debiasing/__pycache__
+clip_debiasing/models/clipcap/__pycache__
+*.pyc
