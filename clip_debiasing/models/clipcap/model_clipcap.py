@@ -91,9 +91,10 @@ class CustomGPT2LMHeadModel(GPT2LMHeadModel):
         )
         hidden_states = transformer_outputs[0]
 
-        if self.model_parallel:
-            torch.cuda.set_device(self.transformer.first_device)
-            hidden_states = hidden_states.to(self.lm_head.weight.device)
+        # TODO: do we need this? !!
+        # if self.model_parallel:
+        #     torch.cuda.set_device(self.transformer.first_device)
+        #     hidden_states = hidden_states.to(self.lm_head.weight.device)
 
         if mode=='sfid':
             hidden_dim_size = hidden_states.shape[1]

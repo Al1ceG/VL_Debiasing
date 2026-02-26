@@ -73,7 +73,7 @@ def main():
     model = model.eval().to(device)
 
     # Load COCO captions annotations
-    with open('data/COCO/annotations/instances_val2014.json', 'r') as json_data:
+    with open('data/COCO/annotations/captions_val2014.json', 'r') as json_data:
         d = json.load(json_data)
     annotations = d['annotations']
 
@@ -106,6 +106,7 @@ def main():
 
     # Only run generation if file does not already exist
     if not os.path.exists(results_filename):
+        print("Results file does not exist")
         for image_id, gt_captions in tqdm(filtered_id_to_captions.items()):
             with torch.no_grad():
                 if image_id in remove_id.values:
