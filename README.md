@@ -1,4 +1,20 @@
-# Joint Vision-Language Social Bias Removal for CLIP [CVPR 2025]
+# MLP Practical : Debiasing Vision Language Models (Group 61: Alice Graham, Kenji Mehl, Shreeya Gorasia)
+
+
+## Using the MLP CLuster
+**Log in:** 
+ssh s2142414@mlp -J s2142414@student.ssh.inf.ed.ac.uk
+
+**Enter password twice:** 
+*password*
+
+**Activate virtual environment:** 
+. venv_mlp/bin/activate
+
+**Run the code:** 
+srun --partition=Teaching --gres=gpu:1 --time=08:00:00 --mail-user=s2142414@ed.ac.uk --mail-type=END,FAIL bash -c "source ~/venv_mlp/bin/activate && python VL_Debiasing/file_to_run.py"
+
+
 
 [![arxiv](https://img.shields.io/badge/paper-Arxiv-blue.svg)](https://arxiv.org/abs/2411.12785)
 ## Usage
