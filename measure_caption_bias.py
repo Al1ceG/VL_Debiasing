@@ -18,6 +18,7 @@ from transformers import GPT2Tokenizer
 from clip_debiasing.models.clipcap import model_clipcap
 from clip_debiasing.models.clipcap.clipcap_utils import decide_gender, generate
 import clip
+from clip_debiasing.models.model_vl_debiasing import DebiasedCLIP
 from unified_debiasing.evaluation import evaluate_image_captioning
 
 
@@ -69,6 +70,7 @@ def main():
     model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
     model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
 
+    # TODO: we need to load debiased clip here
     clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
     model = model.eval().to(device)
 

@@ -5,3 +5,4 @@ unified_debiasing/embedding
 unified_debiasing/__pycache__
 clip_debiasing/models/clipcap/__pycache__
 *.pyc
+data/.DS_Store
