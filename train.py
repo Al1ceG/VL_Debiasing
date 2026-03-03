@@ -8,11 +8,11 @@ from clip_debiasing.models.model_vl_debiasing import DebiasedCLIP
 # from clip_debiasing.models.model_vl_debiasing_h_14 import DebiasedCLIP # for ViT-H/14
 
 import utils
-import eval_train
+from joint_debiasing import eval_train
 import argparse
 import os
 import sys
-from eval_all import run_eval
+from joint_debiasing.eval_all import run_eval
 
 
 def train(model, data_loader, optimizer, epoch=None, warmup_steps=None, device=None, scheduler=None, config=None):

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 # AG import the caption-based clip model
-from clip_debiasing.models.clipcap.model_clipcap import ClipCaptionModel
+# from clip_debiasing.models.clipcap.model_clipcap import ClipCaptionModel
 
 
 from clip_debiasing.models.model_clipped import CLIP_clipped
@@ -19,7 +19,7 @@ from clip_debiasing.models.model_prompt_race import CLIP_prompt_race
 
 from clip_debiasing.models.model_vl_debiasing import DebiasedCLIP
 
-from eval_retrieval import create_dataset, create_loader, evaluation, itm_eval
+from joint_debiasing.eval_retrieval import create_dataset, create_loader, evaluation, itm_eval
 
 
 def run_eval(model, preprocess, attribute="gender", device=torch.device('cuda')):
