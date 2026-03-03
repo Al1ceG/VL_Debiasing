@@ -19,7 +19,7 @@ class Dotdict(dict):
 # change the dataset directory 
 DATA_PATH = "/data"
 FAIRFACE_DATA_PATH = "data/fairface/"
-PROMPT_DATA_PATH = "/data/prompt_templates.csv"
+PROMPT_DATA_PATH = "data/prompt_templates.csv"
 FACET_DATA_PATH = "/FACET"
 UTKFACE_DATA_PATH = "/utkface"
 
