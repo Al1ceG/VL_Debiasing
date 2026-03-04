@@ -100,6 +100,10 @@ def main(args=None, config=None):
     best_details = {"epoch": 0, "eval": -100}
     count = 0
     for epoch in range(epochs):
+        # KM: Added evaluation code here to trigger errors sooner.
+        attribute_test = "race" if attribute == 'race/skin_tone' else attribute
+        curr_eval = eval_train.run_eval_train_return(model, model.preprocess, attribute=attribute_test, dataset=dataset_name)
+
         if count >= 10: 
             print(f"Early-stopped after {epoch} epochs.")
             break # early stop

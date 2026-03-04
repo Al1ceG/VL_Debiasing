@@ -100,7 +100,7 @@ def eval_ranking(labels_list: np.ndarray, image_embeddings: torch.Tensor, prompt
 
     results = defaultdict(lambda: [])
     for prompt_embedding in tqdm(prompts_embeddings, desc=f"Computing {evaluation}"):
-        similarities = (image_embeddings.float() @ prompt_embedding.T.float()).cpu().numpy().flatten()
+        similarities = (image_embeddings.float() @ prompt_embedding.float()).cpu().numpy().flatten()
         summary = pd.DataFrame({"score": similarities, "label": labels_list})
         for k, v in eval_f(summary, top_n=topn).items():
             results[k[len(evaluation) + 1:]].append(v)
@@ -132,7 +132,7 @@ def measure_bias(model, img_preproc: Callable, tokenizer: Callable, attribute="g
     elif dataset == 'utkface':
         ds = UTKface(mode=mode, iat_type=attribute, transforms=img_preproc)
         
-    dl = DataLoader(ds, batch_size=256, num_workers=6)
+    dl = DataLoader(ds, batch_size=256, num_workers=4)
 
     prompts: List[str] = gen_prompts()
 
