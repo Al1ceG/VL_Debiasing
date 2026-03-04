@@ -15,7 +15,12 @@ from clip_debiasing.datasets import IATDataset, FairFace, FACET, UTKface
 
 def normalized_discounted_KL(df: pd.DataFrame, top_n: int) -> dict:
     def KL_divergence(p, q):
-        return np.sum(np.where(p != 0, p * (np.log(p) - np.log(q)), 0))
+        # KM: add epislon smoothing to fix divide by 0
+        epsilon = 1e-12
+        p_safe = p + epsilon
+        q_safe = q + epsilon
+
+        return np.sum(np.where(p != 0, p * (np.log(p_safe) - np.log(q_safe)), 0))
 
     result_metrics = {f"ndkl_eq_opp": 0.0}
 
