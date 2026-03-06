@@ -56,8 +56,8 @@ def main(args=None, config=None):
     # attribute = 'age'
     # attribute = 'race'
 
-    backbone = 'ViT-B/16'
-    # backbone = 'ViT-B/32'
+    # backbone = 'ViT-B/16'
+    backbone = 'ViT-B/32'
     # backbone = 'ViT-L/14'
     # backbone = ('ViT-H-14', 'laion2b_s32b_b79k')
 
@@ -127,13 +127,14 @@ def main(args=None, config=None):
             sys.stderr.flush()
 
     # once finish, conduct eval
-    best_epoch = best_details["epoch"]
-    print(f"Conducting evaluation for best epoch, Epoch {best_epoch}...")
-    model = DebiasedCLIP(backbone, device=device, mlp1_hidden_size=mlp1_hidden_size, mlp2_hidden_size=mlp2_hidden_size, alpha=alpha).to(device)
-    preprocess = model.preprocess
-    model.load_state_dict(torch.load(os.path.join(exp_dir, f"best.pth")))
-    results = run_eval(model, preprocess, attribute=attribute)
-    print(results)
+    # TODO: Removed one shot evaluation and retrieval for now
+    # best_epoch = best_details["epoch"]
+    # print(f"Conducting evaluation for best epoch, Epoch {best_epoch}...")
+    # model = DebiasedCLIP(backbone, device=device, mlp1_hidden_size=mlp1_hidden_size, mlp2_hidden_size=mlp2_hidden_size, alpha=alpha).to(device)
+    # preprocess = model.preprocess
+    # model.load_state_dict(torch.load(os.path.join(exp_dir, f"best.pth")))
+    # results = run_eval(model, preprocess, attribute=attribute)
+    # print(results)
     sys.stdout.flush()  
     sys.stderr.flush()
 
