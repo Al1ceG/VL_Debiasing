@@ -71,8 +71,19 @@ def main():
     model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
 
     # TODO: we need to load debiased clip here
-    clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
+    # clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
     model = model.eval().to(device)
+    
+    Debiased_clip_path = 'exp/latest/Exp_512_1024_0.3_5e-06/best.pth'
+    backbone = 'ViT-B/32'
+    mlp1_hidden_size = 512
+    mlp2_hidden_size = 1024
+    alpha = 0.3
+    clip_model = DebiasedCLIP(backbone, device=device, mlp1_hidden_size=mlp1_hidden_size, mlp2_hidden_size=mlp2_hidden_size, alpha=alpha).to(device)
+    preprocess = clip_model.preprocess
+    clip_model.load_state_dict(torch.load(Debiased_clip_path, map_location=device))
+    # Unsure if we need this evaluation mode 
+    # clip_model.eval()
 
     # Load COCO captions annotations
     with open('data/COCO/annotations/captions_val2014.json', 'r') as json_data:
