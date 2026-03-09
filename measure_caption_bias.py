@@ -65,7 +65,7 @@ def main():
 
     # # Load ClipCap model and CLIP image encoder
     prefix_length = 10
-    model_path = 'clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
+    model_path = 'VL_Debiasing/clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
     model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
@@ -74,7 +74,7 @@ def main():
     # clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
     model = model.eval().to(device)
     
-    Debiased_clip_path = 'exp/latest/Exp_512_1024_0.3_5e-06/best.pth'
+    Debiased_clip_path = 'VL_Debiasing/vitb32_debiased_model/latest/Exp_512_1024_0.3_5e-06/best.pth'
     backbone = 'ViT-B/32'
     mlp1_hidden_size = 512
     mlp2_hidden_size = 1024
