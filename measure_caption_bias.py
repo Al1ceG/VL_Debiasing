@@ -5,6 +5,8 @@ import json
 import random
 import pickle
 
+import tempfile
+
 import torch
 import numpy as np
 import pandas as pd
@@ -23,6 +25,10 @@ from unified_debiasing.evaluation import evaluate_image_captioning
 
 
 def main():
+    
+    scratch_dir = os.environ.get("SCRATCH", f"/disk/scratch/s2142414")
+    os.makedirs(scratch_dir, exist_ok=True)
+
     parser = argparse.ArgumentParser(description="Measure baseline bias of ClipCap (no debiasing).")
     parser.add_argument('--gpu_id', default='0', type=str, help='GPU id to use')
     parser.add_argument(
@@ -34,7 +40,7 @@ def main():
 
     parser.add_argument(
         '--results_filename',
-        default="VL_Debiasing/results/clip_cap_baseline.csv",
+        default=os.path.join(scratch_dir, "clip_cap_debiased.csv"),
         type=str,
         help='Path to save baseline captioning results',
     )
@@ -48,9 +54,14 @@ def main():
     # Ensure imports can find project root
     sys.path.append('./')
 
-    # Ensure required NLTK resources are available
-    nltk.download('punkt')
-    nltk.download('punkt_tab')
+    # Get NLTK resources (to scratch)
+    nltk_data_dir = os.path.join(scratch_dir, "nltk_data")
+    os.makedirs(nltk_data_dir, exist_ok=True)
+    nltk.data.path.append(nltk_data_dir)
+
+    nltk.download('punkt', download_dir=nltk_data_dir)
+    nltk.download('punkt_tab', download_dir=nltk_data_dir)
+
 
     # Reproducibility
     seed = 0
@@ -62,6 +73,10 @@ def main():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmarks = False
     os.environ['PYTHONHASHSEED'] = str(seed)
+
+    # Use scratch
+    os.environ["HF_HOME"] = os.path.join(scratch_dir, "hf_cache")
+    os.environ["TRANSFORMERS_CACHE"] = os.path.join(scratch_dir, "hf_cache")
 
     # # Load ClipCap model and CLIP image encoder
     prefix_length = 10
