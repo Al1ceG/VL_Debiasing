@@ -27,14 +27,14 @@ def main():
     parser.add_argument('--gpu_id', default='0', type=str, help='GPU id to use')
     parser.add_argument(
         '--image_dir',
-        default="data/COCO/images/val2014",
+        default="VL_Debiasing/data/COCO/images/val2014",
         type=str,
         help='Directory containing COCO val2014 images',
     )
 
     parser.add_argument(
         '--results_filename',
-        default="results/clip_cap_baseline.csv",
+        default="VL_Debiasing/results/clip_cap_baseline.csv",
         type=str,
         help='Path to save baseline captioning results',
     )
@@ -86,7 +86,7 @@ def main():
     # clip_model.eval()
 
     # Load COCO captions annotations
-    with open('data/COCO/annotations/captions_val2014.json', 'r') as json_data:
+    with open('VL_Debiasing/data/COCO/annotations/captions_val2014.json', 'r') as json_data:
         d = json.load(json_data)
     annotations = d['annotations']
 
@@ -101,7 +101,7 @@ def main():
 
     # TODO: not just for gender
     # Ground-truth gender per image
-    imid_2_gender = pickle.load(open('clip_debiasing/models/clipcap/val_imid_gender.pkl', 'rb'))
+    imid_2_gender = pickle.load(open('VL_Debiasing/clip_debiasing/models/clipcap/val_imid_gender.pkl', 'rb'))
     filtered_image_ids = set(imid_2_gender.keys())
 
     # Only keep images that have a gender label
@@ -112,7 +112,7 @@ def main():
     }
 
     # IDs to remove (e.g., problematic images)
-    remove_id = pd.read_csv("clip_debiasing/models/clipcap/remove_df.csv")['remove_id']
+    remove_id = pd.read_csv("VL_Debiasing/clip_debiasing/models/clipcap/remove_df.csv")['remove_id']
 
     results_filename = args.results_filename
     results = []
