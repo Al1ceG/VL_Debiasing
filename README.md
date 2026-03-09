@@ -14,7 +14,9 @@ ssh s2142414@mlp -J s2142414@student.ssh.inf.ed.ac.uk
 **Run the code:** 
 srun --partition=Teaching --gres=gpu:1 --time=08:00:00 --mail-user=s2142414@ed.ac.uk --mail-type=END,FAIL bash -c "source ~/venv_mlp/bin/activate && python VL_Debiasing/file_to_run.py"
 
-
+**Move data from computer to cluster:** 
+scp -r -o ProxyJump=s2142414@student.ssh.inf.ed.ac.uk \
+folder_to_copy s2142414@mlp:/home/s2142414/VL-Debiasing/data
 
 [![arxiv](https://img.shields.io/badge/paper-Arxiv-blue.svg)](https://arxiv.org/abs/2411.12785)
 ## Usage
