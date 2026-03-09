@@ -63,13 +63,12 @@ def main():
     torch.backends.cudnn.benchmarks = False
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-# THIS IS THE CODE FOR LOADING BASELINE CLIP CAP
     # # Load ClipCap model and CLIP image encoder
-    # prefix_length = 10
-    # model_path = 'clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
+    prefix_length = 10
+    model_path = 'clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    # model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
-    # model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
+    model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
+    model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
 
     # THIS IS THE CODE FOR LOADING THE DEBIASED CLIP
     # clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
