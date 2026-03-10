@@ -26,6 +26,7 @@ from unified_debiasing.evaluation import evaluate_image_captioning
 
 def main():
     
+    # temp storage for cluster 
     scratch_dir = os.environ.get("SCRATCH", f"/disk/scratch/s2142414")
     os.makedirs(scratch_dir, exist_ok=True)
 
@@ -79,7 +80,8 @@ def main():
     os.environ["TRANSFORMERS_CACHE"] = os.path.join(scratch_dir, "hf_cache")
 
     # # Load ClipCap model and CLIP image encoder
-    prefix_length = 10
+    prefix_length = 10 
+        # why is prefix length 10? Ans) tradeoff between Cider/Bleu scores and traning speeds - maybe we need to change 
     model_path = 'VL_Debiasing/clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
@@ -92,8 +94,8 @@ def main():
     Debiased_clip_path = 'VL_Debiasing/vitb32_debiased_model/latest/Exp_512_1024_0.3_5e-06/best.pth'
     backbone = 'ViT-B/32'
     mlp1_hidden_size = 512
-    mlp2_hidden_size = 1024
-    alpha = 0.3
+    mlp2_hidden_size = 1024 
+    alpha = 0.3 # model puts 30% weight on counterfactual and 70% on alignining bias distributions. 
     clip_model = DebiasedCLIP(backbone, device=device, mlp1_hidden_size=mlp1_hidden_size, mlp2_hidden_size=mlp2_hidden_size, alpha=alpha).to(device)
     preprocess = clip_model.preprocess
     clip_model.load_state_dict(torch.load(Debiased_clip_path, map_location=device))
@@ -116,6 +118,8 @@ def main():
 
     # TODO: not just for gender
     # Ground-truth gender per image
+        # This file maps COCO image IDs to a ground-truth gender ('Male' or 'Female')
+        # to enable bias evaluation, as COCO itself does not provide these labels.
     imid_2_gender = pickle.load(open('VL_Debiasing/clip_debiasing/models/clipcap/val_imid_gender.pkl', 'rb'))
     filtered_image_ids = set(imid_2_gender.keys())
 
@@ -131,10 +135,12 @@ def main():
 
     results_filename = args.results_filename
     results = []
+        ## This was manual cleanup of COCO dataset from UNIFIED paper e.g multiple people, 
 
     # Only run generation if file does not already exist
     if not os.path.exists(results_filename):
         print("Results file does not exist")
+        ## use progress bar to loop through images with known gender labels
         for image_id, gt_captions in tqdm(filtered_id_to_captions.items()):
             with torch.no_grad():
                 if image_id in remove_id.values:
@@ -148,11 +154,14 @@ def main():
                 ground_truth_gender = imid_2_gender[image_id]
 
                 # Get CLIP image embedding (prefix)
+                    ## use debiased encoder, (BA and CF)
                 prefix = clip_model.encode_image(
                     preprocess(image).unsqueeze(0).to(device)
                 ).float()
 
                 # Generate caption without any debiasing
+                    ## 10 token debiased embedding (prefix) fed into GPT2
+                    ## this is start of sentence, predicts subsequent words one by one to describe image, 
                 generated_text = generate(
                     model,
                     tokenizer,
@@ -160,6 +169,8 @@ def main():
                 )
 
                 # Detect gender in generated text
+                    ## Use NLTK to tokenize the generated caption and detect gendered pronouns.
+                    ## This identifies if the AI 'hallucinated' a gender based on bias
                 detected_gender = decide_gender(nltk.word_tokenize(generated_text))
 
                 # Store result
@@ -180,6 +191,11 @@ def main():
         print(f"Results file {results_filename} already exists. Skipping generation.")
 
     # Evaluate baseline image captioning and bias
+        ## This function processes the generated CSV to quantify model 'fairness' and 'utility.'
+        ## 1. It calculates MR_C (Composite Misclassification Rate) to identify gender bias.
+        ## 2. It runs METEOR and SPICE to ensure the captions are still high-quality descriptions.
+        ## 3. It applies 'Bootstrapping' (100 iterations) to ensure the results are statistically 
+        #    significant and provides a 95% confidence interval (Mean ± Margin).
     evaluate_image_captioning(results_filename)
 
 
