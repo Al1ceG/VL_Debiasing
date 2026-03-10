@@ -40,7 +40,7 @@ def main():
 
     parser.add_argument(
         '--results_filename',
-        default=os.path.join(scratch_dir, "clip_cap_debiased.csv"),
+        default="VL_Debiasing/results/clipcap_debiased.csv",
         type=str,
         help='Path to save baseline captioning results',
     )
