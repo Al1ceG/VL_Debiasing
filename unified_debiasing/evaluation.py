@@ -9,6 +9,9 @@ import numpy as np
 from tqdm import tqdm
 from glob import glob
 from pycocoevalcap.spice.spice import Spice
+from pycocoevalcap.spice.spice import Spice
+from pycocoevalcap.cider.cider import Cider   # added
+from pycocoevalcap.bleu.bleu import Bleu      # added
 import ast
 import re
 import os
@@ -340,24 +343,35 @@ def evaluate_captions_max(df):
         
     scorers = [
         (Meteor(), ["METEOR"]),
-        (Spice(), ["SPICE"])
+        (Spice(),  ["SPICE"]),
+        (Cider(),  ["CIDEr"]),
+        # Bleu(4) returns scores for n=1,2,3,4; we keep only BLEU-4 (index 3)
+        (Bleu(4),  ["BLEU-4"]),
     ]
 
     results = {method[0]: 0 for scorer, method in scorers}
 
     for scorer, method in tqdm(scorers):
-        score_orig, scores_orig = scorer.compute_score(gts, res)
+        score_orig,    scores_orig    = scorer.compute_score(gts,         res)
         score_neutral, scores_neutral = scorer.compute_score(gts_neutral, res)
-        
+
         if method[0] == "SPICE":
-            # Extract the F1 scores from the SPICE results
-            f_scores_orig = [score['All']['f'] for score in scores_orig]
-            f_scores_neutral = [score['All']['f'] for score in scores_neutral]
-            max_scores = [max(orig, neut) for orig, neut in zip(f_scores_orig, f_scores_neutral)]
+            # SPICE returns dicts; extract F1 from 'All' category
+            f_scores_orig    = [s['All']['f'] for s in scores_orig]
+            f_scores_neutral = [s['All']['f'] for s in scores_neutral]
+            max_scores = [max(o, n) for o, n in zip(f_scores_orig, f_scores_neutral)]
+
+        elif method[0] == "BLEU-4":
+            # Bleu(4).compute_score() returns a list-of-lists; index 3 = BLEU-4 per image
+            max_scores = [max(o, n) for o, n in zip(scores_orig[3], scores_neutral[3])]
+
         else:
-            max_scores = [max(orig, neut) for orig, neut in zip(scores_orig, scores_neutral)]
+            # METEOR and CIDEr both return a flat list of per-image scores
+            max_scores = [max(o, n) for o, n in zip(scores_orig, scores_neutral)]
+
         results[method[0]] = sum(max_scores) / len(max_scores)
     return results
+
 
 
 def report_df(df):
@@ -376,8 +390,14 @@ def bootstrap(df, num_samples=100, sample_size=1000):
     return bootstrap_results
 
 def calculate_confidence_intervals(bootstrap_results, confidence_level=0.95):
-    metrics = ['Male Misclassification Rate', 'Female Misclassification Rate', 'Overall Misclassification Rate',
-               'Composite Misclassification Rate', 'METEOR', 'SPICE']
+    # metrics = ['Male Misclassification Rate', 'Female Misclassification Rate', 'Overall Misclassification Rate', 
+    # 'Composite Misclassification Rate', 'METEOR', 'SPICE']
+    metrics = [
+        'Male Misclassification Rate', 'Female Misclassification Rate',
+        'Overall Misclassification Rate', 'Composite Misclassification Rate',
+        'METEOR', 'SPICE', 'CIDEr', 'BLEU-4',   # CIDEr and BLEU-4 added
+    ]
+
     ci_lower = {}
     ci_upper = {}
     for metric in metrics:
@@ -415,6 +435,11 @@ def evaluate_image_captioning(file_path):
     composite_mis_mean, composite_mis_margin = mean_margin(ci_lower['Composite Misclassification Rate'], ci_upper['Composite Misclassification Rate'])
     meteor_mean, meteor_margin = mean_margin(ci_lower['METEOR']*100, ci_upper['METEOR']*100)
     spice_mean, spice_margin = mean_margin(ci_lower['SPICE']*100, ci_upper['SPICE']*100)
+
+    # CIDEr is already on its own scale (~0–1.5 for COCO); do not multiply by 100
+    cider_mean,   cider_margin   = mean_margin(ci_lower['CIDEr'],        ci_upper['CIDEr'])
+    # BLEU-4 is 0–1; multiply by 100 to express as a percentage
+    bleu4_mean,   bleu4_margin   = mean_margin(ci_lower['BLEU-4'] * 100, ci_upper['BLEU-4'] * 100)
 
     # Prepare the result row with mean ± margin format
     new_row = {
