@@ -441,6 +441,18 @@ def evaluate_image_captioning(file_path):
     # BLEU-4 is 0–1; multiply by 100 to express as a percentage
     bleu4_mean,   bleu4_margin   = mean_margin(ci_lower['BLEU-4'] * 100, ci_upper['BLEU-4'] * 100)
 
+    # Caption-ABLE: harmonic mean of caption quality (MaxMETEOR) and fairness (exp(-MR_C)).
+    # from the ABLE metric (Zhang et al., Joint VL Debiasing).
+    # MR_C close to 0 → exp(-MR_C) ≈ 1 (fair); MR_C high → fairness term collapses toward 0.
+    # Both inputs are converted back to [0,1] fractions before the harmonic mean.
+    meteor_frac   = meteor_mean        / 100
+    mrc_frac      = composite_mis_mean / 100
+    fairness_term = np.exp(-mrc_frac)
+    if meteor_frac > 0 and fairness_term > 0:
+        caption_able = (2 / (1 / meteor_frac + 1 / fairness_term)) * 100
+    else:
+        caption_able = 0.0
+
     # Prepare the result row with mean ± margin format
     new_row = {
         'file_path': file_path,
@@ -449,7 +461,11 @@ def evaluate_image_captioning(file_path):
         'Overall Misclassification Rate': f"{overall_mis_mean:.2f} ± {overall_mis_margin:.2f}",
         'Composite Misclassification Rate': f"{composite_mis_mean:.2f} ± {composite_mis_margin:.2f}",
         'METEOR': f"{meteor_mean:.2f} ± {meteor_margin:.2f}",
-        'SPICE': f"{spice_mean:.2f} ± {spice_margin:.2f}"
+        'SPICE': f"{spice_mean:.2f} ± {spice_margin:.2f}",
+        'CIDEr':        f"{cider_mean:.4f} ± {cider_margin:.4f}", ## added cider
+        'BLEU-4 (%)':   f"{bleu4_mean:.2f} ± {bleu4_margin:.2f}", ## added Bleu
+        # Caption-ABLE derived from overall averages of METEOR and CMR into one summary number
+        'Caption-ABLE': f"{caption_able:.2f}", ## added Caption-ABLE from Joint
     }
 
     # Print the result in the terminal
