@@ -11,12 +11,45 @@ ssh s2142414@mlp -J s2142414@student.ssh.inf.ed.ac.uk
 **Activate virtual environment:** 
 . venv_mlp/bin/activate
 
-**Run the code:** 
+**Make slurm file**
+nano submit_new_eval.sh
+paste in:
+
+#!/bin/bash
+#SBATCH --job-name=clip_debias_eval_new
+#SBATCH --partition=Teaching
+#SBATCH --gres=gpu:1
+#SBATCH --mem=64G
+#SBATCH --time=10:00:00
+#SBATCH --mail-user=s2142414@ed.ac.uk        CHANGE THIS
+#SBATCH --mail-type=END,FAIL
+
+# Activate your virtual environment
+source ~/venv_mlp/bin/activate
+
+# Run your Python script
+python -u VL_Debiasing/measure_caption_bias.py    CHANGE THIS
+
+**Run the code with sbatch NEW**
+sbatch VL_Debiasing/submit_eval_new.sh
+
+**See what is running**
+squeue -u $USER
+
+
+
+**OLD**
+
+**Run the code OLD:** 
 srun --partition=Teaching --gres=gpu:1 --time=08:00:00 --mail-user=s2142414@ed.ac.uk --mail-type=END,FAIL bash -c "source ~/venv_mlp/bin/activate && python VL_Debiasing/file_to_run.py"
 
 **Move data from computer to cluster:** 
 scp -r -o ProxyJump=s2142414@student.ssh.inf.ed.ac.uk \
 folder_to_copy s2142414@mlp:/home/s2142414/VL-Debiasing/data
+
+
+
+
 
 [![arxiv](https://img.shields.io/badge/paper-Arxiv-blue.svg)](https://arxiv.org/abs/2411.12785)
 ## Usage
