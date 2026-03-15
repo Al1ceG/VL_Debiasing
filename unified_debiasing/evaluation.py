@@ -22,6 +22,13 @@ from sklearn.utils import resample
 
 from pycocoevalcap.meteor import meteor as meteor_module  # Import the module
 
+
+
+"""
+evaluate_image_captioning("results.csv") — fast, no SPICE
+evaluate_image_captioning("results.csv", run_spice=True) 
+"""
+
 # Locate the directory where the 'meteor.py' is located
 meteor_dir = os.path.dirname(os.path.abspath(meteor_module.__file__))
 # Construct the full path to 'meteor-1.5.jar'
@@ -317,7 +324,7 @@ def convert_str_to_list(str_list):
         return []  # Returns an empty list in case of error
 
 
-def neutralize_gender(text):
+def neutralize_gender(text): ### mirror this for race? (not yet, AI ignore this for now)
     """ Neutralize gendered words in the given text. """
     gendered_words = {
         r"\bman\b": "person", r"\bguy\b": "person", r"\bson\b": "child", r"\bboy\b": "child",
@@ -329,7 +336,7 @@ def neutralize_gender(text):
     return text
 
 
-def evaluate_captions_max(df):
+def evaluate_captions_max(df, run_spice=False):
     """ Evaluate captions taking the maximum score between original and neutralized ground truths. """
     gts = {}
     res = {}
@@ -340,14 +347,15 @@ def evaluate_captions_max(df):
         res[i] = [row['generated_text']]
         # Neutralize each caption in the ground truths
         gts_neutral[i] = [neutralize_gender(caption) for caption in original_gts]
-        
+
     scorers = [
         (Meteor(), ["METEOR"]),
-        (Spice(),  ["SPICE"]),
         (Cider(),  ["CIDEr"]),
         # Bleu(4) returns scores for n=1,2,3,4; we keep only BLEU-4 (index 3)
         (Bleu(4),  ["BLEU-4"]),
     ]
+    if run_spice:
+        scorers.insert(1, (Spice(), ["SPICE"]))
 
     results = {method[0]: 0 for scorer, method in scorers}
 
@@ -374,29 +382,30 @@ def evaluate_captions_max(df):
 
 
 
-def report_df(df):
+def report_df(df, run_spice=False):
     df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
     rates = misclassification_rate(df)
-    results = evaluate_captions_max(df)
+    results = evaluate_captions_max(df, run_spice=run_spice)
 
     return rates, results
 
-def bootstrap(df, num_samples=100, sample_size=1000):
+def bootstrap(df, num_samples=100, sample_size=1000, run_spice=False):
     bootstrap_results = []
     for _ in tqdm(range(num_samples)):
         sample_df = resample(df, n_samples=sample_size)
-        rates, results = report_df(sample_df)
+        rates, results = report_df(sample_df, run_spice=run_spice)
         bootstrap_results.append((rates, results))
     return bootstrap_results
 
 def calculate_confidence_intervals(bootstrap_results, confidence_level=0.95):
     # metrics = ['Male Misclassification Rate', 'Female Misclassification Rate', 'Overall Misclassification Rate', 
     # 'Composite Misclassification Rate', 'METEOR', 'SPICE']
+    first_result = bootstrap_results[0]
+    available_caption_metrics = list(first_result[1].keys())
     metrics = [
         'Male Misclassification Rate', 'Female Misclassification Rate',
         'Overall Misclassification Rate', 'Composite Misclassification Rate',
-        'METEOR', 'SPICE', 'CIDEr', 'BLEU-4',   # CIDEr and BLEU-4 added
-    ]
+    ] + available_caption_metrics
 
     ci_lower = {}
     ci_upper = {}
@@ -411,15 +420,12 @@ def calculate_confidence_intervals(bootstrap_results, confidence_level=0.95):
     return ci_lower, ci_upper
 
 
-def evaluate_image_captioning(file_path):
-    columns = ['File', 'Male Misclassification Rate', 'Female Misclassification Rate',
-               'Overall Misclassification Rate', 'Composite Misclassification Rate', 'METEOR', 'SPICE']
-
+def evaluate_image_captioning(file_path, run_spice=False):
     print(f'Evaluating Image Captioning for {file_path}')
     df = pd.read_csv(file_path)
-    
+
     # Run bootstrapping and calculate confidence intervals
-    bootstrap_results = bootstrap(df)
+    bootstrap_results = bootstrap(df, run_spice=run_spice)
     ci_lower, ci_upper = calculate_confidence_intervals(bootstrap_results)
     
     # Function to calculate mean and margin
@@ -434,8 +440,6 @@ def evaluate_image_captioning(file_path):
     overall_mis_mean, overall_mis_margin = mean_margin(ci_lower['Overall Misclassification Rate'], ci_upper['Overall Misclassification Rate'])
     composite_mis_mean, composite_mis_margin = mean_margin(ci_lower['Composite Misclassification Rate'], ci_upper['Composite Misclassification Rate'])
     meteor_mean, meteor_margin = mean_margin(ci_lower['METEOR']*100, ci_upper['METEOR']*100)
-    spice_mean, spice_margin = mean_margin(ci_lower['SPICE']*100, ci_upper['SPICE']*100)
-
     # CIDEr is already on its own scale (~0–1.5 for COCO); do not multiply by 100
     cider_mean,   cider_margin   = mean_margin(ci_lower['CIDEr'],        ci_upper['CIDEr'])
     # BLEU-4 is 0–1; multiply by 100 to express as a percentage
@@ -461,12 +465,13 @@ def evaluate_image_captioning(file_path):
         'Overall Misclassification Rate': f"{overall_mis_mean:.2f} ± {overall_mis_margin:.2f}",
         'Composite Misclassification Rate': f"{composite_mis_mean:.2f} ± {composite_mis_margin:.2f}",
         'METEOR': f"{meteor_mean:.2f} ± {meteor_margin:.2f}",
-        'SPICE': f"{spice_mean:.2f} ± {spice_margin:.2f}",
-        'CIDEr':        f"{cider_mean:.4f} ± {cider_margin:.4f}", ## added cider
-        'BLEU-4 (%)':   f"{bleu4_mean:.2f} ± {bleu4_margin:.2f}", ## added Bleu
-        # Caption-ABLE derived from overall averages of METEOR and CMR into one summary number
-        'Caption-ABLE': f"{caption_able:.2f}", ## added Caption-ABLE from Joint
+        'CIDEr':        f"{cider_mean:.4f} ± {cider_margin:.4f}",
+        'BLEU-4 (%)':   f"{bleu4_mean:.2f} ± {bleu4_margin:.2f}",
+        'Caption-ABLE': f"{caption_able:.2f}",
     }
+    if run_spice:
+        spice_mean, spice_margin = mean_margin(ci_lower['SPICE']*100, ci_upper['SPICE']*100)
+        new_row['SPICE'] = f"{spice_mean:.2f} ± {spice_margin:.2f}"
 
     # Print the result in the terminal
     pprint(new_row)
