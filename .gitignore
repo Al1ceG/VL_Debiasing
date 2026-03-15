@@ -10,6 +10,8 @@ clip_debiasing/models/clipcap/__pycache__
 data/.DS_Store
 **/.DS_Store
 
+exp/
+
 
 
 MLP_G061.pdf
