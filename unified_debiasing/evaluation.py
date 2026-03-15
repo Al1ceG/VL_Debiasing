@@ -1,5 +1,6 @@
 import torch
 import clip
+from PIL import Image
 # from unified_debiasing.utils import FacetDataset, evaluate_recall, evaluate_gender_difference, zero_shot_classifier, calculate_accuracy
 from torch.utils.data import DataLoader
 import random
@@ -336,6 +337,40 @@ def neutralize_gender(text): ### mirror this for race? (not yet, AI ignore this 
     return text
 
 
+def compute_clip_scores_per_image(df, coco_img_dir, clip_model="ViT-B/32", device="cuda"):
+    """
+    Computes reference-free CLIPScore for each row.
+    CLIPScore = 2.5 * max(cosine_sim(image_emb, caption_emb), 0) * 100  (Hessel et al. 2021)
+
+    Expects df to have columns: image_id, generated_text
+    COCO val2014 filename format: COCO_val2014_000000{id:06d}.jpg
+    Returns a list of per-image scores (same order as df rows).
+    """
+    model, preprocess = clip.load(clip_model, device=device)
+    model.eval()
+    scores = []
+
+    for _, row in tqdm(df.iterrows(), total=len(df), desc="CLIPScore"):
+        img_path = os.path.join(coco_img_dir, f"COCO_val2014_{int(row['image_id']):012d}.jpg")
+        if not os.path.exists(img_path):
+            # fallback: some splits use plain zero-padded filename
+            img_path = os.path.join(coco_img_dir, f"{int(row['image_id']):012d}.jpg")
+
+        image = preprocess(Image.open(img_path).convert("RGB")).unsqueeze(0).to(device)
+        text  = clip.tokenize([row['generated_text']], truncate=True).to(device)
+
+        with torch.no_grad():
+            img_emb  = model.encode_image(image)
+            text_emb = model.encode_text(text)
+            img_emb  = img_emb  / img_emb.norm(dim=-1, keepdim=True)
+            text_emb = text_emb / text_emb.norm(dim=-1, keepdim=True)
+            cos_sim  = (img_emb * text_emb).sum().item()
+
+        scores.append(2.5 * max(cos_sim, 0) * 100)
+
+    return scores
+
+
 def evaluate_captions_max(df, run_spice=False):
     """ Evaluate captions taking the maximum score between original and neutralized ground truths. """
     gts = {}
@@ -383,9 +418,14 @@ def evaluate_captions_max(df, run_spice=False):
 
 
 def report_df(df, run_spice=False):
+    df = df.copy()
     df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
     rates = misclassification_rate(df)
     results = evaluate_captions_max(df, run_spice=run_spice)
+
+    # CLIPScore was pre-computed; just average the sampled rows
+    if 'CLIPScore' in df.columns:
+        results['CLIPScore'] = df['CLIPScore'].mean()
 
     return rates, results
 
@@ -420,9 +460,14 @@ def calculate_confidence_intervals(bootstrap_results, confidence_level=0.95):
     return ci_lower, ci_upper
 
 
-def evaluate_image_captioning(file_path, run_spice=False):
+def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, clip_model="ViT-B/32", device="cuda"):
     print(f'Evaluating Image Captioning for {file_path}')
     df = pd.read_csv(file_path)
+
+    # Pre-compute CLIPScore once per image (avoids reloading images 100x during bootstrap)
+    if coco_img_dir is not None:
+        print("Pre-computing CLIPScores...")
+        df['CLIPScore'] = compute_clip_scores_per_image(df, coco_img_dir, clip_model=clip_model, device=device)
 
     # Run bootstrapping and calculate confidence intervals
     bootstrap_results = bootstrap(df, run_spice=run_spice)
@@ -472,6 +517,9 @@ def evaluate_image_captioning(file_path, run_spice=False):
     if run_spice:
         spice_mean, spice_margin = mean_margin(ci_lower['SPICE']*100, ci_upper['SPICE']*100)
         new_row['SPICE'] = f"{spice_mean:.2f} ± {spice_margin:.2f}"
+    if 'CLIPScore' in ci_lower:
+        clip_mean, clip_margin = mean_margin(ci_lower['CLIPScore'], ci_upper['CLIPScore'])
+        new_row['CLIPScore'] = f"{clip_mean:.2f} ± {clip_margin:.2f}"
 
     # Print the result in the terminal
     pprint(new_row)
