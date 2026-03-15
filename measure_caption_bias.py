@@ -196,7 +196,7 @@ def main():
         ## 2. It runs METEOR and SPICE to ensure the captions are still high-quality descriptions.
         ## 3. It applies 'Bootstrapping' (100 iterations) to ensure the results are statistically 
         #    significant and provides a 95% confidence interval (Mean ± Margin).
-    evaluate_image_captioning(results_filename)
+    evaluate_image_captioning(results_filename, coco_img_dir=args.image_dir, device=device)
 
 
 if __name__ == "__main__":
