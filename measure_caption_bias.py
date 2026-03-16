@@ -16,6 +16,8 @@ import nltk
 
 from transformers import GPT2Tokenizer
 
+
+
 # import things from the unified paper
 from clip_debiasing.models.clipcap import model_clipcap
 from clip_debiasing.models.clipcap.clipcap_utils import decide_gender, generate
