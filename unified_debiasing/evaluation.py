@@ -371,7 +371,31 @@ def compute_clip_scores_per_image(df, coco_img_dir, clip_model="ViT-B/32", devic
     return scores
 
 
-def evaluate_captions_max(df, run_spice=False):
+def compute_spice_scores_per_image(df):
+    """
+    Pre-computes SPICE max(orig, neutral) once per image before bootstrapping.
+    Mirrors the CLIPScore pre-computation pattern to avoid running SPICE 200x in bootstrap.
+    Returns a list of per-image scores (same order as df rows).
+    """
+    gts = {}
+    res = {}
+    gts_neutral = {}
+    for i, row in df.iterrows():
+        original_gts = row['gt_captions']
+        gts[i] = original_gts
+        res[i] = [row['generated_text']]
+        gts_neutral[i] = [neutralize_gender(caption) for caption in original_gts]
+
+    spice = Spice()
+    _, scores_orig    = spice.compute_score(gts, res)
+    _, scores_neutral = spice.compute_score(gts_neutral, res)
+
+    f_orig    = [s['All']['f'] for s in scores_orig]
+    f_neutral = [s['All']['f'] for s in scores_neutral]
+    return [max(o, n) for o, n in zip(f_orig, f_neutral)]
+
+
+def evaluate_captions_max(df):
     """ Evaluate captions taking the maximum score between original and neutralized ground truths. """
     gts = {}
     res = {}
@@ -389,8 +413,6 @@ def evaluate_captions_max(df, run_spice=False):
         # Bleu(4) returns scores for n=1,2,3,4; we keep only BLEU-4 (index 3)
         (Bleu(4),  ["BLEU-4"]),
     ]
-    if run_spice:
-        scorers.insert(1, (Spice(), ["SPICE"]))
 
     results = {method[0]: 0 for scorer, method in scorers}
 
@@ -398,13 +420,7 @@ def evaluate_captions_max(df, run_spice=False):
         score_orig,    scores_orig    = scorer.compute_score(gts,         res)
         score_neutral, scores_neutral = scorer.compute_score(gts_neutral, res)
 
-        if method[0] == "SPICE":
-            # SPICE returns dicts; extract F1 from 'All' category
-            f_scores_orig    = [s['All']['f'] for s in scores_orig]
-            f_scores_neutral = [s['All']['f'] for s in scores_neutral]
-            max_scores = [max(o, n) for o, n in zip(f_scores_orig, f_scores_neutral)]
-
-        elif method[0] == "BLEU-4":
+        if method[0] == "BLEU-4":
             # Bleu(4).compute_score() returns a list-of-lists; index 3 = BLEU-4 per image
             max_scores = [max(o, n) for o, n in zip(scores_orig[3], scores_neutral[3])]
 
@@ -417,23 +433,24 @@ def evaluate_captions_max(df, run_spice=False):
 
 
 
-def report_df(df, run_spice=False):
+def report_df(df):
     df = df.copy()
     df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
     rates = misclassification_rate(df)
-    results = evaluate_captions_max(df, run_spice=run_spice)
+    results = evaluate_captions_max(df)
 
-    # CLIPScore was pre-computed; just average the sampled rows
-    if 'CLIPScore' in df.columns:
-        results['CLIPScore'] = df['CLIPScore'].mean()
+    # SPICE and CLIPScore are pre-computed; just average the sampled rows
+    for col in ['SPICE', 'CLIPScore']:
+        if col in df.columns:
+            results[col] = df[col].mean()
 
     return rates, results
 
-def bootstrap(df, num_samples=100, sample_size=1000, run_spice=False):
+def bootstrap(df, num_samples=100, sample_size=1000):
     bootstrap_results = []
     for _ in tqdm(range(num_samples)):
         sample_df = resample(df, n_samples=sample_size)
-        rates, results = report_df(sample_df, run_spice=run_spice)
+        rates, results = report_df(sample_df)
         bootstrap_results.append((rates, results))
     return bootstrap_results
 
@@ -464,13 +481,17 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     print(f'Evaluating Image Captioning for {file_path}')
     df = pd.read_csv(file_path)
 
-    # Pre-compute CLIPScore once per image (avoids reloading images 100x during bootstrap)
+    # Pre-compute CLIPScore and SPICE once before bootstrap (avoids running them 200x inside the loop)
     if coco_img_dir is not None:
         print("Pre-computing CLIPScores...")
         df['CLIPScore'] = compute_clip_scores_per_image(df, coco_img_dir, clip_model=clip_model, device=device)
+    if run_spice:
+        print("Pre-computing SPICE scores...")
+        df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
+        df['SPICE'] = compute_spice_scores_per_image(df)
 
     # Run bootstrapping and calculate confidence intervals
-    bootstrap_results = bootstrap(df, run_spice=run_spice)
+    bootstrap_results = bootstrap(df)
     ci_lower, ci_upper = calculate_confidence_intervals(bootstrap_results)
     
     # Function to calculate mean and margin
@@ -523,6 +544,16 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
 
     # Print the result in the terminal
     pprint(new_row)
+
+    # Save results to a CSV — appends a new row each run so all experiments are in one place
+    eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results.csv")
+    results_df = pd.DataFrame([new_row])
+    if os.path.exists(eval_results_path):
+        results_df.to_csv(eval_results_path, mode='a', header=False, index=False)
+    else:
+        results_df.to_csv(eval_results_path, index=False)
+
+    
     # columns = ['File', 'Male Misclassification Rate', 'Female Misclassification Rate',
     #            'Overall Misclassification Rate', 'Composite Misclassification Rate', 'METEOR', 'SPICE']
 

@@ -9,6 +9,6 @@
 
 source ~/venv_mlp/bin/activate
 
-python -u measure_caption_bias.py \
-    --image_dir data/COCO/images/val2014 \
+python -u VL_Debiasing/measure_caption_bias.py \
+    --image_dir VL_Debiasing/data/COCO/images/val2014 \
     --results_filename /disk/scratch/s2142414/clip_cap_debiased.csv
