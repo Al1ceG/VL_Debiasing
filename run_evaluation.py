@@ -41,10 +41,11 @@ RESULTS_FILES = [
 ]
 
 # Set to the COCO val2014 image directory to enable CLIPScore, or None to skip
-COCO_IMG_DIR = None  # e.g. "data/COCO/images/val2014"
+# COCO_IMG_DIR = None
+COCO_IMG_DIR = "/home/s2142414/VL_Debiasing/data/COCO/images/val2014" 
 
 # Set to True to run SPICE (slow, requires Java, but pre-computed once not 200x)
-RUN_SPICE = False
+RUN_SPICE = True
 
 # ─────────────────────────────────────────────────────────────────────────────
 

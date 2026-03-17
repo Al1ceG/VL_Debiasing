@@ -574,3 +574,4 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     # }
     # pprint(new_row)
     
+    
