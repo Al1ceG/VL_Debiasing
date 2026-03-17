@@ -2,89 +2,69 @@
 run_evaluation.py
 
 Runs evaluation metrics on already-generated caption CSV files.
-Use this when caption generation has already been done (e.g. results/clip_cap_baseline.csv,
-results/clipcap_debiased.csv) and you just want to compute the metrics.
-
-This script does NOT load any CLIP or GPT2 models — it only reads CSVs and computes metrics.
+Does NOT load any CLIP or GPT2 models — only reads CSVs and computes metrics.
 
 All metric computation comes from unified_debiasing/evaluation.py:
     - evaluate_image_captioning() is the main entry point
-    - It runs bootstrapping (100 iterations, 1000 samples each) for statistical confidence
+    - Runs bootstrapping (100 iterations, 1000 samples each) for statistical confidence
     - Outputs mean ± margin at 95% confidence interval for each metric
-    - Appends results to results/eval_results.csv so all experiments are in one place
+    - Appends a row to results/eval_results.csv after each file so all experiments are in one place
 
-Metrics computed (all from evaluation.py):
-    - METEOR      : caption quality. Requires Java (meteor-1.5.jar via subprocess).
+Metrics computed:
+    - METEOR      : caption quality. Requires Java (meteor-1.5.jar runs as a subprocess).
     - CIDEr       : caption quality. Pure Python, fast.
     - BLEU-4      : caption quality. Pure Python, fast.
-    - CLIPScore   : reference-free image-caption similarity. Requires GPU. Optional (needs --image_dir).
-    - SPICE       : caption quality (scene graph). Requires Java. Optional (--run_spice). Slow even pre-computed.
-    - Male/Female/Overall/Composite Misclassification Rate : gender bias metrics, from misclassification_rate() in evaluation.py
-    - Caption-ABLE: harmonic mean of METEOR and fairness term exp(-MR_C), from evaluation.py
+    - CLIPScore   : image-caption similarity. Requires GPU + image dir. Set COCO_IMG_DIR below to enable.
+    - SPICE       : caption quality (scene graph). Requires Java. Set RUN_SPICE=True below to enable.
+    - Male/Female/Overall/Composite Misclassification Rate : gender bias metrics.
+    - Caption-ABLE: harmonic mean of METEOR and fairness (exp(-MR_C)).
 
-Usage examples:
-    # Fast (no CLIPScore, no SPICE):
-    python run_evaluation.py --results_files results/clip_cap_baseline.csv results/clipcap_debiased.csv
-
-    # With CLIPScore (slower, needs GPU and image dir):
-    python run_evaluation.py --results_files results/clip_cap_baseline.csv --image_dir data/COCO/images/val2014
-
-    # With SPICE (slow, needs Java):
-    python run_evaluation.py --results_files results/clip_cap_baseline.csv --run_spice
+To run:
+    python run_evaluation.py
 """
 
-import argparse
 import os
 import torch
 
-# evaluate_image_captioning is the main evaluation function defined in unified_debiasing/evaluation.py.
-# It handles: reading the CSV, pre-computing CLIPScore/SPICE if requested, bootstrapping,
-# confidence interval calculation, printing results, and saving to eval_results.csv.
+# evaluate_image_captioning is defined in unified_debiasing/evaluation.py.
+# It handles: reading the CSV, optional CLIPScore/SPICE pre-computation, bootstrapping,
+# confidence intervals, printing results, and saving to results/eval_results.csv.
 from unified_debiasing.evaluation import evaluate_image_captioning
 
 
+# ── Configuration — edit these as needed ─────────────────────────────────────
+
+# CSV files to evaluate — add or remove paths as needed
+RESULTS_FILES = [
+    "results/clip_cap_baseline.csv",
+    "results/clipcap_debiased.csv",
+]
+
+# Set to the COCO val2014 image directory to enable CLIPScore, or None to skip
+COCO_IMG_DIR = None  # e.g. "data/COCO/images/val2014"
+
+# Set to True to run SPICE (slow, requires Java, but pre-computed once not 200x)
+RUN_SPICE = False
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Run evaluation on existing caption CSV files.")
-
-    # One or more CSV files to evaluate — e.g. baseline and debiased results
-    parser.add_argument(
-        '--results_files', nargs='+', required=True,
-        help='Paths to caption CSV files to evaluate (e.g. results/clip_cap_baseline.csv)'
-    )
-
-    # Optional: directory of COCO val2014 images, needed to compute CLIPScore.
-    # If not provided, CLIPScore is skipped. See compute_clip_scores_per_image() in evaluation.py.
-    parser.add_argument(
-        '--image_dir', default=None, type=str,
-        help='COCO val2014 image directory (optional, required for CLIPScore)'
-    )
-
-    # Optional: run SPICE metric. Pre-computed once before bootstrap (see compute_spice_scores_per_image()
-    # in evaluation.py). Still slow due to Java scene graph parsing, but much faster than the old
-    # approach of running it 200x inside the bootstrap loop.
-    parser.add_argument(
-        '--run_spice', action='store_true',
-        help='Run SPICE metric (requires Java, slow even pre-computed)'
-    )
-
-    parser.add_argument('--gpu_id', default='0', type=str, help='GPU id to use')
-    args = parser.parse_args()
-
-    # Set up GPU — same pattern as measure_caption_bias.py
+    # GPU setup — falls back to CPU automatically if no GPU available
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-    # Evaluate each CSV file in turn.
-    # Results for each file are printed to stdout (visible in slurm .out)
-    # and appended to eval_results.csv in the same directory as the input CSV.
-    for file_path in args.results_files:
+    # Evaluate each CSV in turn.
+    # Results are printed to stdout (visible in slurm .out file)
+    # and appended as a new row to results/eval_results.csv.
+    for file_path in RESULTS_FILES:
         print(f"\n{'='*60}")
         print(f"Evaluating: {file_path}")
         evaluate_image_captioning(
             file_path,
-            run_spice=args.run_spice,
-            coco_img_dir=args.image_dir,
+            run_spice=RUN_SPICE,
+            coco_img_dir=COCO_IMG_DIR,
             device=device,
         )
 
