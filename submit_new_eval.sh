@@ -1,14 +1,20 @@
 #!/bin/bash
-#SBATCH --job-name=clip_debias_eval_new
+#SBATCH --job-name=run_eval
 #SBATCH --partition=Teaching
-#SBATCH --gres=gpu:1
-#SBATCH --mem=64G
-#SBATCH --time=10:00:00
-#SBATCH --mail-user=s2142414@ed.ac.uk
-#SBATCH --mail-type=END,FAIL
+#SBATCH --mem=16G
+#SBATCH --time=01:00:00
+#SBATCH --output=/home/s2142414/VL_Debiasing/logs/slurm-%j.out
 
+# Environment setup
 source ~/venv_mlp/bin/activate
 
-python -u VL_Debiasing/measure_caption_bias.py \
-    --image_dir VL_Debiasing/data/COCO/images/val2014 \
-    --results_filename /disk/scratch/s2142414/clip_cap_debiased.csv
+# Java needed for METEOR
+export JAVA_HOME=$HOME/jdk8u402-b06
+export PATH=$JAVA_HOME/bin:$PATH
+export TMPDIR=/home/s2142414/tmp
+mkdir -p /home/s2142414/tmp
+mkdir -p /home/s2142414/VL_Debiasing/logs
+
+# Run
+cd ~/VL_Debiasing
+python run_evaluation.py
