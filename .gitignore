@@ -12,6 +12,19 @@ data/.DS_Store
 
 exp/
 
+# Ignore Slurm output logs
+slurm-*.out
+
+# Ignore large model checkpoints
+vitb16_debiased_model/
+vitb32_debiased_model/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore local temp files
+tmp/
 
 
 MLP_G061.pdf
