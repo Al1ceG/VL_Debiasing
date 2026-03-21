@@ -516,6 +516,7 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     base_path = file_path.replace('.csv', '')
     clipscore_path = base_path + '_clipscore.csv'
     spice_path = base_path + '_spice.csv'
+    lic_path = base_path + '_lic.csv'
 
     if os.path.exists(clipscore_path):
         # CLIPScore already computed in a previous run — load and merge into df
@@ -564,7 +565,7 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     # BLEU-4 is 0–1; multiply by 100 to express as a percentage
     bleu4_mean,   bleu4_margin   = mean_margin(ci_lower['BLEU-4'] * 100, ci_upper['BLEU-4'] * 100)
 
-    # Caption-ABLE: harmonic mean of caption quality (MaxMETEOR) and fairness (exp(-MR_C)).
+    # Caption-ABLE: harmonic mean of caption quality (MaxMETEOR) and fairness (exp(-MR_C)).--- ABLE may not apply here. 
     # from the ABLE metric (Zhang et al., Joint VL Debiasing).
     # MR_C close to 0 → exp(-MR_C) ≈ 1 (fair); MR_C high → fairness term collapses toward 0.
     # Both inputs are converted back to [0,1] fractions before the harmonic mean.
@@ -597,11 +598,12 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     if 'CLIPScore' in ci_lower:
         clip_mean, clip_margin = mean_margin(ci_lower['CLIPScore'], ci_upper['CLIPScore'])
         new_row['CLIPScore'] = f"{clip_mean:.2f} ± {clip_margin:.2f}"
-        
-        # Adding LIC (Language-Image Consistency)
-        # Assuming LIC is the raw similarity (CLIPScore / 250)
-        ##temporary - NOT REAL LIC metric
-        new_row['LIC'] = f"{(clip_mean/250):.4f} ± {(clip_margin/250):.4f}"
+
+    # Load the cached real LIC metric if it was pre-computed
+    if os.path.exists(lic_path):
+        lic_df = pd.read_csv(lic_path)
+        if 'LIC' in lic_df.columns:
+            new_row['LIC'] = str(lic_df['LIC'].iloc[0])
 
     # 3. FORCE ALIGNMENT (The Fix)
     all_possible_columns = [
@@ -620,7 +622,7 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     results_df = results_df[all_possible_columns]
 
     # 4. Save/Append to CSV
-    eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results.csv")
+    eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results_2.csv")
     if os.path.exists(eval_results_path):
         results_df.to_csv(eval_results_path, mode='a', header=False, index=False)
     else:
