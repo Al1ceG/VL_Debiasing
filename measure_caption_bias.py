@@ -13,6 +13,8 @@ import pandas as pd
 from tqdm import tqdm
 from PIL import Image
 import nltk
+from sklearn.ensemble import RandomForestClassifier
+from joblib import dump, load
 
 from transformers import GPT2Tokenizer
 
@@ -22,6 +24,71 @@ from clip_debiasing.models.clipcap.clipcap_utils import decide_gender, generate
 import clip
 from clip_debiasing.models.model_vl_debiasing import DebiasedCLIP
 from unified_debiasing.evaluation import evaluate_image_captioning
+
+
+def train_or_load_decoder_sfid(
+    train_path,
+    val_path,
+    rf_checkpoint_path,
+    threshold,
+    prune_num,
+):
+    """Train/load decoder RF and return SFID decoder intervention tensors."""
+    if not os.path.exists(train_path):
+        raise FileNotFoundError(f"Decoder SFID train embedding file not found: {train_path}")
+    if not os.path.exists(val_path):
+        raise FileNotFoundError(f"Decoder SFID val embedding file not found: {val_path}")
+
+    train_embedding = torch.load(train_path, map_location="cpu")
+    val_embedding = torch.load(val_path, map_location="cpu")
+
+    required_keys = {"hidden_states", "sensitive_attributes"}
+    if not required_keys.issubset(train_embedding.keys()):
+        raise KeyError(f"Train embedding must contain keys: {required_keys}")
+    if not required_keys.issubset(val_embedding.keys()):
+        raise KeyError(f"Val embedding must contain keys: {required_keys}")
+
+    x_train = train_embedding["hidden_states"]
+    y_train = train_embedding["sensitive_attributes"]
+    x_val = val_embedding["hidden_states"]
+
+    if isinstance(x_train, torch.Tensor):
+        x_train = x_train.cpu().numpy()
+    if isinstance(y_train, torch.Tensor):
+        y_train = y_train.cpu().numpy()
+    if isinstance(x_val, torch.Tensor):
+        x_val = x_val.cpu().numpy()
+
+    os.makedirs(os.path.dirname(rf_checkpoint_path), exist_ok=True)
+    if os.path.exists(rf_checkpoint_path):
+        decoder_clf = load(rf_checkpoint_path)
+        print(f"Loaded decoder RF model from {rf_checkpoint_path}")
+    else:
+        decoder_clf = RandomForestClassifier(n_estimators=100, random_state=0)
+        decoder_clf.fit(x_train, y_train)
+        dump(decoder_clf, rf_checkpoint_path)
+        print(f"Trained and saved decoder RF model to {rf_checkpoint_path}")
+
+    probabilities = decoder_clf.predict_proba(x_val)
+    max_probabilities = probabilities.max(axis=1)
+    low_confidence_samples = x_val[max_probabilities < threshold]
+
+    if low_confidence_samples.shape[0] == 0:
+        print(
+            "Warning: no low-confidence decoder samples found for threshold "
+            f"{threshold}. Falling back to mean over all validation hidden states."
+        )
+        low_confidence_samples = x_val
+
+    decoder_mean_features_lowconfidence = torch.tensor(
+        low_confidence_samples.mean(axis=0),
+        dtype=torch.float32,
+    )
+    decoder_importances = decoder_clf.feature_importances_
+    text_important_indices = np.argsort(decoder_importances)[-prune_num:]
+    text_important_indices = torch.tensor(text_important_indices, dtype=torch.long)
+
+    return text_important_indices, decoder_mean_features_lowconfidence
 
 
 def main():
@@ -43,6 +110,41 @@ def main():
         default="VL_Debiasing/results/clipcap_debiased.csv",
         type=str,
         help='Path to save baseline captioning results',
+    )
+    parser.add_argument(
+        '--decoder_sfid',
+        action='store_true',
+        help='Enable decoder-only SFID intervention during caption generation.',
+    )
+    parser.add_argument(
+        '--decoder_train_embedding',
+        default="VL_Debiasing/embedding/clip_cap_decoder_fairface_train.pt",
+        type=str,
+        help='Path to decoder SFID training embedding file (.pt).',
+    )
+    parser.add_argument(
+        '--decoder_val_embedding',
+        default="VL_Debiasing/embedding/clip_cap_decoder_fairface_test.pt",
+        type=str,
+        help='Path to decoder SFID validation/test embedding file (.pt).',
+    )
+    parser.add_argument(
+        '--decoder_rf_checkpoint',
+        default="VL_Debiasing/checkpoint/CLIPCAP_text_decoder_random_forest_model.joblib",
+        type=str,
+        help='Path to save/load decoder SFID random forest checkpoint.',
+    )
+    parser.add_argument(
+        '--decoder_prune_num',
+        default=50,
+        type=int,
+        help='Top-k decoder hidden dimensions to intervene on for SFID.',
+    )
+    parser.add_argument(
+        '--decoder_threshold',
+        default=0.9,
+        type=float,
+        help='Confidence threshold for selecting low-confidence samples in SFID.',
     )
     args = parser.parse_args()
 
@@ -131,6 +233,28 @@ def main():
 
     results_filename = args.results_filename
     results = []
+    text_important_indices = None
+    text_mean_features_lowconfidence = None
+    decoder_mode = None
+
+    if args.decoder_sfid:
+        print("Preparing decoder-only SFID statistics...")
+        if args.decoder_prune_num <= 0:
+            raise ValueError("--decoder_prune_num must be > 0 when --decoder_sfid is enabled.")
+        text_important_indices, text_mean_features_lowconfidence = train_or_load_decoder_sfid(
+            train_path=args.decoder_train_embedding,
+            val_path=args.decoder_val_embedding,
+            rf_checkpoint_path=args.decoder_rf_checkpoint,
+            threshold=args.decoder_threshold,
+            prune_num=args.decoder_prune_num,
+        )
+        text_important_indices = text_important_indices.to(device)
+        text_mean_features_lowconfidence = text_mean_features_lowconfidence.to(device)
+        decoder_mode = "sfid"
+        print(
+            "Decoder SFID ready: "
+            f"prune_num={args.decoder_prune_num}, threshold={args.decoder_threshold}"
+        )
 
     # Only run generation if file does not already exist
     if not os.path.exists(results_filename):
@@ -156,7 +280,10 @@ def main():
                 generated_text = generate(
                     model,
                     tokenizer,
+                    text_important_indices=text_important_indices,
+                    text_mean_features_lowconfidence=text_mean_features_lowconfidence,
                     embed=prefix,
+                    mode=decoder_mode,
                 )
 
                 # Detect gender in generated text
