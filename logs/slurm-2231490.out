@@ -1,0 +1,43 @@
+mkdir: cannot create directory ‘unified_debiasing/embedding’: File exists
+mkdir: cannot create directory ‘unified_debiasing/embedding/flickr’: File exists
+mkdir: cannot create directory ‘unified_debiasing/checkpoint’: File exists
+/home/s2142414/venv_mlp/lib/python3.12/site-packages/clip/clip.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import packaging
+Traceback (most recent call last):
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/preprocessing/clip_extract_embedding.py", line 79, in <module>
+    train_dataset, val_dataset, _ = ImageLoader()
+                                    ^^^^^^^^^^^^^
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/preprocessing/clip_extract_embedding.py", line 14, in ImageLoader
+    train_data = pd.read_csv(os.path.join(root_dir, 'train/fairface_label_train.csv'))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 873, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 300, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1645, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1904, in _make_engine
+    self.handles = get_handle(
+                   ^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/pandas/io/common.py", line 926, in get_handle
+    handle = open(
+             ^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/fairface/train/fairface_label_train.csv'
+Extract CLIP-CAP's decoder embedding.
+Traceback (most recent call last):
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/preprocessing/clipcap_extract_embedding.py", line 32, in <module>
+    embedding = torch.load(f'embedding/fairface_{clip_name}_train.pt')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/torch/serialization.py", line 1500, in load
+    with _open_file_like(f, "rb") as opened_file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/torch/serialization.py", line 768, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/torch/serialization.py", line 749, in __init__
+    super().__init__(open(name, mode))  # noqa: SIM115
+                     ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'embedding/fairface_ViTB32_train.pt'
