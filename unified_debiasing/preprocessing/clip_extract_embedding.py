@@ -10,9 +10,9 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import clip
 def ImageLoader():
-    root_dir = '../data/fairface/'
-    train_data = pd.read_csv(os.path.join(root_dir, 'fairface_label_train.csv'))
-    valid_data = pd.read_csv(os.path.join(root_dir, 'fairface_label_val.csv'))
+    root_dir = 'data/fairface/'
+    train_data = pd.read_csv(os.path.join(root_dir, 'labels/train/train_labels.csv'))
+    valid_data = pd.read_csv(os.path.join(root_dir, 'labels/val/train_labels.csv'))
     test_data = None
     gender_map = {'Female': 0, 'Male': 1}
     race_map = {'East Asian': 0, 'Indian': 1, 'Black': 2, 'White': 3, 'Middle Eastern': 4, 'Latino_Hispanic': 5, 'Southeast Asian': 6}
@@ -74,7 +74,7 @@ class ImageDataset(Dataset):
 
 label = None
 sens = ["age", "gender", "race"]
-root_dir = '../data/fairface'
+root_dir = 'data/fairface'
 
 train_dataset, val_dataset, _ = ImageLoader()
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
