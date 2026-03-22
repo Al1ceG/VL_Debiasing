@@ -12,8 +12,8 @@ All metric computation comes from unified_debiasing/evaluation.py:
 
 Metrics computed:
     - METEOR      : caption quality. Requires Java (meteor-1.5.jar runs as a subprocess).
-    - CIDEr       : caption quality. Pure Python, fast.
-    - BLEU-4      : caption quality. Pure Python, fast.
+    - CIDEr       : caption quality. Python, fast.
+    - BLEU-4      : caption quality. Python, fast.
     - CLIPScore   : image-caption similarity. Requires GPU + image dir. Set COCO_IMG_DIR below to enable.
     - SPICE       : caption quality (scene graph). Requires Java. Set RUN_SPICE=True below to enable.
     - Male/Female/Overall/Composite Misclassification Rate : gender bias metrics.

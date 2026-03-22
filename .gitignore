@@ -9,7 +9,7 @@ clip_debiasing/models/clipcap/__pycache__
 *.pyc
 data/.DS_Store
 **/.DS_Store
-
+results/
 exp/
 
 # Ignore Slurm output logs
