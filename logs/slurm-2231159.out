@@ -1,0 +1,8 @@
+=============================================
+Running LIC for Baseline Captions...
+=============================================
+'timed out' thrown while requesting HEAD https://huggingface.co/bert-base-uncased/resolve/main/tokenizer_config.json
+Retrying in 1s [Retry 1/5].
+'timed out' thrown while requesting HEAD https://huggingface.co/bert-base-uncased/resolve/main/tokenizer_config.json
+Retrying in 2s [Retry 2/5].
+[2026-03-22T13:16:46.349] error: *** JOB 2231159 ON crannog01 CANCELLED AT 2026-03-22T13:16:46 DUE to SIGNAL Terminated ***

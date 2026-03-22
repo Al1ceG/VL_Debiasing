@@ -1,0 +1,38 @@
+/home/s2142414/venv_mlp/lib/python3.12/site-packages/clip/clip.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import packaging
+
+============================================================
+Evaluating: results/clip_cap_baseline.csv
+Evaluating Image Captioning for results/clip_cap_baseline.csv
+Loading pre-computed CLIPScores from results/clip_cap_baseline_clipscore.csv
+Loading pre-computed SPICE scores from results/clip_cap_baseline_spice.csv
+
+  0%|          | 0/100 [00:00<?, ?it/s]
+
+  0%|          | 0/3 [00:00<?, ?it/s][A
+
+ 33%|███▎      | 1/3 [00:15<00:30, 15.32s/it][A
+ 33%|███▎      | 1/3 [00:15<00:30, 15.32s/it]
+
+  0%|          | 0/100 [00:16<?, ?it/s]
+Traceback (most recent call last):
+  File "/home/s2142414/VL_Debiasing/run_evaluation.py", line 74, in <module>
+    main()
+  File "/home/s2142414/VL_Debiasing/run_evaluation.py", line 65, in main
+    evaluate_image_captioning(
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/evaluation.py", line 537, in evaluate_image_captioning
+    bootstrap_results = bootstrap(df)
+                        ^^^^^^^^^^^^^
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/evaluation.py", line 471, in bootstrap
+    rates, results = report_df(sample_df)
+                     ^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/evaluation.py", line 459, in report_df
+    results = evaluate_captions_max(df)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/evaluation.py", line 429, in evaluate_captions_max
+    score_orig,    scores_orig    = scorer.compute_score(gts,         res)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/pycocoevalcap/cider/cider.py", line 44, in compute_score
+    assert(type(ref) is list)
+           ^^^^^^^^^^^^^^^^^
+AssertionError

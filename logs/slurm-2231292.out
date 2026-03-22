@@ -1,0 +1,98 @@
+Processing: BASELINE
+Loading data from results/clip_cap_baseline.csv
+Masking gender words...
+
+=============================================
+1/2: Computing LIC for HUMAN Captions
+>>> Loading Tokenizer...
+
+--- Iteration 1/10 ---
+>>> Encoding Data...
+>>> Initializing BERT Model...
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 10457.12it/s]
+[1mBertForSequenceClassification LOAD REPORT[0m from: ./LIC_huggingface
+Key                                        | Status     | 
+-------------------------------------------+------------+-
+cls.predictions.transform.dense.bias       | UNEXPECTED | 
+cls.predictions.decoder.weight             | UNEXPECTED | 
+cls.predictions.transform.dense.weight     | UNEXPECTED | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED | 
+cls.seq_relationship.weight                | UNEXPECTED | 
+cls.predictions.bias                       | UNEXPECTED | 
+cls.seq_relationship.bias                  | UNEXPECTED | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED | 
+classifier.bias                            | MISSING    | 
+classifier.weight                          | MISSING    | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING[3m	:those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.[0m
+Traceback (most recent call last):
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/compute_lic.py", line 166, in <module>
+    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=10)    
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/compute_lic.py", line 85, in compute_lic_for_texts
+    training_args = TrainingArguments(
+                    ^^^^^^^^^^^^^^^^^^
+  File "<string>", line 112, in __init__
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/transformers/training_args.py", line 1577, in __post_init__
+    self.device
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/transformers/training_args.py", line 1857, in device
+    return self._setup_devices
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/functools.py", line 995, in __get__
+    val = self.func(instance)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/transformers/training_args.py", line 1752, in _setup_devices
+    raise ImportError(
+ImportError: Using the `Trainer` with `PyTorch` requires `accelerate>=1.1.0`: Please run `pip install transformers[torch]` or `pip install 'accelerate>=1.1.0'`
+Processing: DEBIASED
+Loading data from results/clipcap_debiased.csv
+Masking gender words...
+
+=============================================
+1/2: Computing LIC for HUMAN Captions
+>>> Loading Tokenizer...
+
+--- Iteration 1/10 ---
+>>> Encoding Data...
+>>> Initializing BERT Model...
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 13191.30it/s]
+[1mBertForSequenceClassification LOAD REPORT[0m from: ./LIC_huggingface
+Key                                        | Status     | 
+-------------------------------------------+------------+-
+cls.predictions.bias                       | UNEXPECTED | 
+cls.predictions.decoder.weight             | UNEXPECTED | 
+cls.predictions.transform.dense.weight     | UNEXPECTED | 
+cls.predictions.transform.dense.bias       | UNEXPECTED | 
+cls.seq_relationship.weight                | UNEXPECTED | 
+cls.seq_relationship.bias                  | UNEXPECTED | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED | 
+classifier.bias                            | MISSING    | 
+classifier.weight                          | MISSING    | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING[3m	:those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.[0m
+Traceback (most recent call last):
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/compute_lic.py", line 166, in <module>
+    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=10)    
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/VL_Debiasing/unified_debiasing/compute_lic.py", line 85, in compute_lic_for_texts
+    training_args = TrainingArguments(
+                    ^^^^^^^^^^^^^^^^^^
+  File "<string>", line 112, in __init__
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/transformers/training_args.py", line 1577, in __post_init__
+    self.device
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/transformers/training_args.py", line 1857, in device
+    return self._setup_devices
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/functools.py", line 995, in __get__
+    val = self.func(instance)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/s2142414/venv_mlp/lib/python3.12/site-packages/transformers/training_args.py", line 1752, in _setup_devices
+    raise ImportError(
+ImportError: Using the `Trainer` with `PyTorch` requires `accelerate>=1.1.0`: Please run `pip install transformers[torch]` or `pip install 'accelerate>=1.1.0'`
+>>> All Evaluations Finished at Sun 22 Mar 18:05:41 GMT 2026
+>>> JOB COMPLETED AT: Sun 22 Mar 18:05:41 GMT 2026
