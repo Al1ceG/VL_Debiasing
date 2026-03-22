@@ -1,0 +1,12 @@
+mkdir: cannot create directory ‘unified_debiasing/embedding’: File exists
+mkdir: cannot create directory ‘unified_debiasing/embedding/flickr’: File exists
+mkdir: cannot create directory ‘unified_debiasing/checkpoint’: File exists
+/home/s2142414/venv_mlp/lib/python3.12/site-packages/clip/clip.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import packaging
+/home/s2142414/venv_mlp/lib/python3.12/site-packages/torch/utils/data/dataloader.py:424: UserWarning: This DataLoader will create 32 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  self.check_worker_number_rationality()
+Extract CLIP image and text embedding for debiasing with baseline models ['RN50', 'ViT-B/32'].
+Processing model RN50.
+  0%|          | 0/678 [00:00<?, ?it/s]/home/s2142414/venv_mlp/lib/python3.12/site-packages/torch/utils/data/dataloader.py:432: UserWarning: This DataLoader will create 32 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  self.check_worker_number_rationality()
+  0%|          | 1/678 [00:32<6:06:10, 32.45s/it]  0%|          | 2/678 [00:48<4:19:14, 23.01s/it]  0%|          | 3/678 [01:05<3:44:23, 19.95s/it]  1%|          | 4/678 [01:21<3:28:22, 18.55s/it]
