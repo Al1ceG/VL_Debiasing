@@ -26,6 +26,8 @@ __pycache__/
 # Ignore local temp files
 tmp/
 
+lick-caption-bias/
+LIC_huggingface/
 
 MLP_G061.pdf
 joint_debiasing/Joint Vision-Language Social Bias Removal for CLIP.pdf

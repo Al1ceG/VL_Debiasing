@@ -53,12 +53,14 @@ class CaptionDataset(torch.utils.data.Dataset):
 # -----------------------------------------------------------------------------
 # 3. BERT Training Loop (10 iterations) - ON CLUSTER
 # -----------------------------------------------------------------------------
-def compute_lic_for_texts(texts, labels, num_iterations=10):
+def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
     scores = []
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') # convert text to ids for BERT
+    model_path = os.path.expanduser("~/VL_Debiasing/LIC_huggingface")
     
     # Suppress heavy logging
     os.environ["WANDB_DISABLED"] = "true"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    tokenizer = BertTokenizer.from_pretrained(model_path, local_files_only=True)
 
     for i in range(num_iterations):
         print(f"\n--- Iteration {i+1}/{num_iterations} ---")
@@ -73,9 +75,9 @@ def compute_lic_for_texts(texts, labels, num_iterations=10):
         train_dataset = CaptionDataset(train_encodings, train_labels)
         test_dataset = CaptionDataset(test_encodings, test_labels)
         
-        #download fresh BERT model, (2 choices M, F), unbiased model every iteration
-        model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)
-        
+        #BERT model, (2 choices M, F), unbiased model every iteration
+        model = BertForSequenceClassification.from_pretrained(model_path, num_labels=2, local_files_only=True)
+
         training_args = TrainingArguments(
             output_dir='./results_temp',          
             num_train_epochs=3,              
@@ -84,7 +86,7 @@ def compute_lic_for_texts(texts, labels, num_iterations=10):
             warmup_steps=100,                
             weight_decay=0.01,               
             logging_strategy="no",
-            evaluation_strategy="no",
+            eval_strategy="no",
             save_strategy="no",
             report_to="none"
         )
@@ -97,6 +99,11 @@ def compute_lic_for_texts(texts, labels, num_iterations=10):
         )
         
         trainer.train()
+
+        # clear the GPU after each iteration
+        del model
+        del trainer
+        torch.cuda.empty_cache()
         
         # Evaluate on test set
         predictions = trainer.predict(test_dataset) # take 20% data, predict gender 
@@ -116,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--file_path", type=str, required=True, help="Path to the captions CSV file")
     args = parser.parse_args()
 
+    model_path = os.path.expanduser("~/VL_Debiasing/LIC_huggingface")
     print(f"Loading data from {args.file_path}")
     df = pd.read_csv(args.file_path)
 
@@ -135,33 +143,57 @@ if __name__ == "__main__":
 
     print("\n=============================================")
     print("1/2: Computing LIC for HUMAN Captions")
-    print("=============================================")
-    human_mean, human_std = compute_lic_for_texts(texts_human, labels, num_iterations=10)
-    
+    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=10)    
     print("\n=============================================")
     print("2/2: Computing LIC for MODEL Captions")
-    print("=============================================")
-    model_mean, model_std = compute_lic_for_texts(texts_model, labels, num_iterations=10)
+    model_mean, model_std = compute_lic_for_texts(texts_model, labels, model_path, num_iterations=10)
 
-    # Bias Amplification = Model LIC - Human LIC
+    # -----------------------------------------------------------------------------
+    # 5. LIC evaluation metrics
+    # -----------------------------------------------------------------------------
+
+    # Calculate the core metrics
     bias_amp = model_mean - human_mean
+    bias_amp_str = f"{bias_amp:.4f}"
+    model_lic_str = f"{model_mean:.4f} ± {model_std:.4f}"
+    human_lic_str = f"{human_mean:.4f} ± {human_std:.4f}"
+
+    # FILE 1: The "Deep Dive" (all_lic_results.csv)
+    # Includes every number to track calculations
+    deep_dive_path = os.path.join(os.path.dirname(args.file_path), "all_lic_results.csv")
+    deep_dive_data = {
+        'file_path': args.file_path,
+        'Human_LIC_Mean': human_mean,
+        'Human_LIC_Std': human_std,
+        'Model_LIC_Mean': model_mean,
+        'Model_LIC_Std': model_std,
+        'Bias_Amplification': bias_amp,
+        'Human_Full': human_lic_str,
+        'Model_Full': model_lic_str
+    }
     
-    print(f"\nFinal Results for {args.file_path}:")
-    print(f"Human LIC: {human_mean:.4f} ± {human_std:.4f}")
-    print(f"Model LIC: {model_mean:.4f} ± {model_std:.4f}")
-    print(f"Bias Amplification: {bias_amp:.4f}")
+    deep_df = pd.DataFrame([deep_dive_data])
+    if os.path.exists(deep_dive_path):
+        deep_df.to_csv(deep_dive_path, mode='a', header=False, index=False)
+    else:
+        deep_df.to_csv(deep_dive_path, index=False)
 
-    lic_path = args.file_path.replace('.csv', '') + '_lic.csv'
-    pd.DataFrame({'LIC': [f"{bias_amp:.4f}"]}).to_csv(lic_path, index=False)
-    print(f"\nSaved Bias Amplification to {lic_path}")
+    # FILE 2: The "Master Table" (eval_results_2.csv)
+    # Appends only the most important metric (LIC) to the existing evaluation row
+    master_path = os.path.join(os.path.dirname(args.file_path), "eval_results_2.csv")
 
-    # Save detailed results
-    results_path = args.file_path.replace('.csv', '') + '_lic_details.csv'
-    pd.DataFrame({
-        'Human LIC Mean': [human_mean],
-        'Human LIC Std': [human_std],
-        'Model LIC Mean': [model_mean],
-        'Model LIC Std': [model_std],
-        'Bias Amplification': [bias_amp]
-    }).to_csv(results_path, index=False)
-    print(f"Saved detailed results to {results_path}")
+    if os.path.exists(master_path):
+        master_df = pd.read_csv(master_path)
+
+        # Match the row by file_path to add the LIC metric
+        if args.file_path in master_df['file_path'].values:
+            # We use the Model LIC string as the primary metric for the master table
+            master_df.loc[master_df['file_path'] == args.file_path, 'LIC'] = model_lic_str
+            # Also adding Bias Amp as it's the key indicator of debiasing success
+            master_df.loc[master_df['file_path'] == args.file_path, 'Bias_Amp'] = bias_amp_str
+            master_df.to_csv(master_path, index=False)
+            print(f"Updated master table: {master_path}")
+    else:
+        print("Warning: eval_results_2.csv not found. Master row update skipped.")
+
+    print(f"\nCalculation Tracked: Model({model_lic_str}) - Human({human_lic_str}) = {bias_amp_str}")
