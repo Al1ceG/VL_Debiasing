@@ -11,8 +11,8 @@ from sklearn.model_selection import train_test_split
 import clip
 def ImageLoader():
     root_dir = 'data/fairface/'
-    train_data = pd.read_csv(os.path.join(root_dir, 'labels/train/train_labels.csv'))
-    valid_data = pd.read_csv(os.path.join(root_dir, 'labels/val/train_labels.csv'))
+    train_data = pd.read_csv(os.path.join(root_dir, 'train/fairface_label_train.csv'))
+    valid_data = pd.read_csv(os.path.join(root_dir, 'val/fairface_label_val.csv'))
     test_data = None
     gender_map = {'Female': 0, 'Male': 1}
     race_map = {'East Asian': 0, 'Indian': 1, 'Black': 2, 'White': 3, 'Middle Eastern': 4, 'Latino_Hispanic': 5, 'Southeast Asian': 6}
