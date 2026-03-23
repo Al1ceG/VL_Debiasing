@@ -302,10 +302,8 @@ def misclassification_rate(df):
     male_misclassification_rate = male_lowconfidence / total_males if total_males > 0 else 0
     female_misclassification_rate = female_lowconfidence / total_females if total_females > 0 else 0
     
-    #overall_misclassification_rate = (male_lowconfidence + female_lowconfidence) / (total_males + total_females)
-    total = total_males + total_females
-    overall_misclassification_rate = (male_lowconfidence + female_lowconfidence) / total if total > 0 else 0
-
+    overall_misclassification_rate = (male_lowconfidence + female_lowconfidence) / (total_males + total_females)
+    
     # Calculate Composite Misclassification Rate (MR_C)
     composite_misclassification_rate = np.sqrt(
         overall_misclassification_rate**2 + (female_misclassification_rate - male_misclassification_rate)**2
@@ -321,19 +319,10 @@ def misclassification_rate(df):
 
 # Function to convert string list representations to actual lists
 def convert_str_to_list(str_list):
-    if isinstance(str_list, list):
-        return [str(x) for x in str_list]
     try:
-        result = ast.literal_eval(str_list)
-        if isinstance(result, list):
-            return [str(x) for x in result]
-        return [str(result)]
-    except (ValueError, TypeError, SyntaxError):
-        pass
-    if isinstance(str_list, str):
-        return [str_list]
-    return []
-
+        return ast.literal_eval(str_list)
+    except ValueError:
+        return []  # Returns an empty list in case of error
 
 
 def neutralize_gender(text): ### mirror this for race? (not yet, AI ignore this for now)
@@ -411,12 +400,10 @@ def evaluate_captions_max(df):
     gts = {}
     res = {}
     gts_neutral = {}
-    for i, (_, row) in enumerate(df.iterrows()):
+    for i, row in df.iterrows():
         original_gts = row['gt_captions']
         gts[i] = original_gts
-        gen_text = row['generated_text']
-        gen_text_str = str(gen_text) if pd.notna(gen_text) else ""
-        res[i] = [gen_text_str]
+        res[i] = [row['generated_text']]
         # Neutralize each caption in the ground truths
         gts_neutral[i] = [neutralize_gender(caption) for caption in original_gts]
 
@@ -448,20 +435,11 @@ def evaluate_captions_max(df):
 
 def report_df(df):
     df = df.copy()
-    # # Ensure conversion happens first
-    # if df['gt_captions'].dtype == object:
-    #     df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
-    
-    # # --- FIX: Filter out rows with no reference captions ---
-    # initial_len = len(df)
-    # df = df[df['gt_captions'].map(len) > 0]
-    # if len(df) < initial_len:
-    #     print(f"Warning: Dropped {initial_len - len(df)} rows with empty gt_captions.")
-    # # -------------------------------------------------------
-
+    df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
     rates = misclassification_rate(df)
     results = evaluate_captions_max(df)
 
+    # SPICE and CLIPScore are pre-computed; just average the sampled rows
     for col in ['SPICE', 'CLIPScore']:
         if col in df.columns:
             results[col] = df[col].mean()
@@ -503,46 +481,14 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     print(f'Evaluating Image Captioning for {file_path}')
     df = pd.read_csv(file_path)
 
-    # Clean the dataframe globally before anything else
-    df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
-    initial_len = len(df)
-    df = df[df['gt_captions'].map(len) > 0]
-    if len(df) < initial_len:
-        print(f"Warning: Dropped {initial_len - len(df)} rows with empty gt_captions.")
-
-    # Pre-compute CLIPScore and SPICE once before bootstrap (avoids running them 200x inside the loop).
-    # Scores are saved to separate CSVs (one per captions file) so the captions CSV stays clean.
-    # e.g. results_debiased/clipcap_debiased.csv -> results_debiased/clipcap_debiased_clipscore.csv
-    base_path = file_path.replace('.csv', '')
-    clipscore_path = base_path + '_clipscore.csv'
-    spice_path = base_path + '_spice.csv'
-    lic_path = base_path + '_lic.csv'
-
-    if os.path.exists(clipscore_path):
-        # CLIPScore already computed in a previous run — load and merge into df
-        print(f"Loading pre-computed CLIPScores from {clipscore_path}")
-        clip_df = pd.read_csv(clipscore_path)
-        df['CLIPScore'] = clip_df['CLIPScore'].values
-    elif coco_img_dir is not None:
+    # Pre-compute CLIPScore and SPICE once before bootstrap (avoids running them 200x inside the loop)
+    if coco_img_dir is not None:
         print("Pre-computing CLIPScores...")
         df['CLIPScore'] = compute_clip_scores_per_image(df, coco_img_dir, clip_model=clip_model, device=device)
-        # Save to separate CSV — keeps captions CSV clean
-        pd.DataFrame({'CLIPScore': df['CLIPScore']}).to_csv(clipscore_path, index=False)
-        print(f"CLIPScores saved to {clipscore_path}")
-
-    if os.path.exists(spice_path):
-        # SPICE already computed in a previous run — load and merge into df
-        print(f"Loading pre-computed SPICE scores from {spice_path}")
-        spice_df = pd.read_csv(spice_path)
-        df['SPICE'] = spice_df['SPICE'].values
-    elif run_spice:
+    if run_spice:
         print("Pre-computing SPICE scores...")
-        spice_df = df.copy()
-        df['SPICE'] = compute_spice_scores_per_image(spice_df)
-
-        # Save to separate CSV — keeps captions CSV clean
-        pd.DataFrame({'SPICE': df['SPICE']}).to_csv(spice_path, index=False)
-        print(f"SPICE scores saved to {spice_path}")
+        df['gt_captions'] = df['gt_captions'].apply(convert_str_to_list)
+        df['SPICE'] = compute_spice_scores_per_image(df)
 
     # Run bootstrapping and calculate confidence intervals
     bootstrap_results = bootstrap(df)
@@ -565,7 +511,7 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     # BLEU-4 is 0–1; multiply by 100 to express as a percentage
     bleu4_mean,   bleu4_margin   = mean_margin(ci_lower['BLEU-4'] * 100, ci_upper['BLEU-4'] * 100)
 
-    # Caption-ABLE: harmonic mean of caption quality (MaxMETEOR) and fairness (exp(-MR_C)).--- ABLE may not apply here. 
+    # Caption-ABLE: harmonic mean of caption quality (MaxMETEOR) and fairness (exp(-MR_C)).
     # from the ABLE metric (Zhang et al., Joint VL Debiasing).
     # MR_C close to 0 → exp(-MR_C) ≈ 1 (fair); MR_C high → fairness term collapses toward 0.
     # Both inputs are converted back to [0,1] fractions before the harmonic mean.
@@ -577,7 +523,7 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     else:
         caption_able = 0.0
 
-    # 1. Define your new_row dictionary first
+    # Prepare the result row with mean ± margin format
     new_row = {
         'file_path': file_path,
         'Male Misclassification Rate': f"{male_mis_mean:.2f} ± {male_mis_margin:.2f}",
@@ -585,47 +531,46 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
         'Overall Misclassification Rate': f"{overall_mis_mean:.2f} ± {overall_mis_margin:.2f}",
         'Composite Misclassification Rate': f"{composite_mis_mean:.2f} ± {composite_mis_margin:.2f}",
         'METEOR': f"{meteor_mean:.2f} ± {meteor_margin:.2f}",
-        'CIDEr': f"{cider_mean:.4f} ± {cider_margin:.4f}",
-        'BLEU-4 (%)': f"{bleu4_mean:.2f} ± {bleu4_margin:.2f}",
+        'CIDEr':        f"{cider_mean:.4f} ± {cider_margin:.4f}",
+        'BLEU-4 (%)':   f"{bleu4_mean:.2f} ± {bleu4_margin:.2f}",
         'Caption-ABLE': f"{caption_able:.2f}",
     }
-
-    # 2. Add SPICE, CLIPScore, and LIC if they exist
     if run_spice:
         spice_mean, spice_margin = mean_margin(ci_lower['SPICE']*100, ci_upper['SPICE']*100)
         new_row['SPICE'] = f"{spice_mean:.2f} ± {spice_margin:.2f}"
-    
     if 'CLIPScore' in ci_lower:
         clip_mean, clip_margin = mean_margin(ci_lower['CLIPScore'], ci_upper['CLIPScore'])
         new_row['CLIPScore'] = f"{clip_mean:.2f} ± {clip_margin:.2f}"
 
-    # Load the cached real LIC metric if it was pre-computed
-    if os.path.exists(lic_path):
-        lic_df = pd.read_csv(lic_path)
-        if 'LIC' in lic_df.columns:
-            new_row['LIC'] = str(lic_df['LIC'].iloc[0])
+    # Print the result in the terminal
+    pprint(new_row)
 
-    # 3. FORCE ALIGNMENT (The Fix)
-    all_possible_columns = [
-        'file_path', 'Male Misclassification Rate', 'Female Misclassification Rate',
-        'Overall Misclassification Rate', 'Composite Misclassification Rate',
-        'METEOR', 'CIDEr', 'BLEU-4 (%)', 'Caption-ABLE', 'SPICE', 'CLIPScore', 'LIC'
-    ]
-
-    # Convert to DataFrame and fill missing columns with "N/A"
+    # Save results to a CSV — appends a new row each run so all experiments are in one place
+    eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results.csv")
     results_df = pd.DataFrame([new_row])
-    for col in all_possible_columns:
-        if col not in results_df.columns:
-            results_df[col] = "N/A"
-
-    # Reorder to match the header exactly
-    results_df = results_df[all_possible_columns]
-
-    # 4. Save/Append to CSV
-    eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results_2.csv")
     if os.path.exists(eval_results_path):
         results_df.to_csv(eval_results_path, mode='a', header=False, index=False)
     else:
         results_df.to_csv(eval_results_path, index=False)
 
-    pprint(new_row)
+    
+    # columns = ['File', 'Male Misclassification Rate', 'Female Misclassification Rate',
+    #            'Overall Misclassification Rate', 'Composite Misclassification Rate', 'METEOR', 'SPICE']
+
+    # print(f'Evaluate Image Captioning for {file_path}')
+    # df = pd.read_csv(file_path)
+    
+    # bootstrap_results = bootstrap(df)
+    # ci_lower, ci_upper = calculate_confidence_intervals(bootstrap_results)
+
+    # new_row = {
+    #     'file_path': file_path,
+    #     'Male Misclassification Rate': f"{ci_lower['Male Misclassification Rate']:.2f}-{ci_upper['Male Misclassification Rate']:.2f}",
+    #     'Female Misclassification Rate': f"{ci_lower['Female Misclassification Rate']:.2f}-{ci_upper['Female Misclassification Rate']:.2f}",
+    #     'Overall Misclassification Rate': f"{ci_lower['Overall Misclassification Rate']:.2f}-{ci_upper['Overall Misclassification Rate']:.2f}",
+    #     'Composite Misclassification Rate': f"{ci_lower['Composite Misclassification Rate']:.2f}-{ci_upper['Composite Misclassification Rate']:.2f}",
+    #     'METEOR': f"{ci_lower['METEOR']*100:.2f}-{ci_upper['METEOR']*100:.2f}",
+    #     'SPICE': f"{ci_lower['SPICE']*100:.2f}-{ci_upper['SPICE']*100:.2f}"
+    # }
+    # pprint(new_row)
+    

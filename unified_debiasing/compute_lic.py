@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
+from datetime import datetime
 
 # -----------------------------------------------------------------------------
 # Masking Logic (Exactly from Hendricks et al. / Hirota et al.)
@@ -53,7 +54,7 @@ class CaptionDataset(torch.utils.data.Dataset):
 # -----------------------------------------------------------------------------
 # 3. BERT Training Loop (10 iterations) - ON CLUSTER - 1(locally, also batch size 1)
 # -----------------------------------------------------------------------------
-def compute_lic_for_texts(texts, labels, model_path, num_iterations=1):
+def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
     scores = []
     # model_path = os.path.expanduser("~/VL_Debiasing/LIC_huggingface")
     model_path = "./LIC_huggingface"
@@ -95,20 +96,20 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=1):
             report_to="none"
         )
 
-        # LOCAL TRAINING ARGUMENTS
-        training_args = TrainingArguments(
-        output_dir='./results_temp',          
-        num_train_epochs=1,              # Reduce from 3 to 1 for the test
-        per_device_train_batch_size=4,   # Reduce from 64 to 4 (Crucial for Mac RAM)
-        per_device_eval_batch_size=4,   
-        warmup_steps=10,                 # Lower warmup for small test
-        weight_decay=0.01,               
-        logging_strategy="steps",        # Change "no" to "steps" so you see progress
-        logging_steps=10,                # Print progress every 10 steps
-        eval_strategy="no",
-        save_strategy="no",
-        report_to="none",
-        )
+        # # LOCAL TRAINING ARGUMENTS
+        # training_args = TrainingArguments(
+        # output_dir='./results_temp',          
+        # num_train_epochs=1,              # Reduce from 3 to 1 for the test
+        # per_device_train_batch_size=4,   # Reduce from 64 to 4 (Crucial for Mac RAM)
+        # per_device_eval_batch_size=4,   
+        # warmup_steps=10,                 # Lower warmup for small test
+        # weight_decay=0.01,               
+        # logging_strategy="steps",        # Change "no" to "steps" so you see progress
+        # logging_steps=10,                # Print progress every 10 steps
+        # eval_strategy="no",
+        # save_strategy="no",
+        # report_to="none",
+        # )
             
         trainer = Trainer(
             model=model,                         
@@ -163,14 +164,16 @@ if __name__ == "__main__":
     #### CHANGE NUM_TERATIONS TO 10 FOR CLUSTER
     print("\n=============================================")
     print("1/2: Computing LIC for HUMAN Captions")
-    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=1)    
+    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=10)    
     print("\n=============================================")
     print("2/2: Computing LIC for MODEL Captions")
-    model_mean, model_std = compute_lic_for_texts(texts_model, labels, model_path, num_iterations=1)
+    model_mean, model_std = compute_lic_for_texts(texts_model, labels, model_path, num_iterations=10)
 
     # -----------------------------------------------------------------------------
     # 5. LIC evaluation metrics
     # -----------------------------------------------------------------------------
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Calculate the core metrics
     bias_amp = model_mean - human_mean
@@ -201,6 +204,7 @@ if __name__ == "__main__":
     # FILE 2: The "Master Table" (eval_results_2.csv)
     # Appends only the most important metric (LIC) to the existing evaluation row
     master_path = os.path.join(os.path.dirname(args.file_path), "eval_results_2.csv")
+    idx = master_df['file_path'] == args.file_path
 
     if os.path.exists(master_path):
         master_df = pd.read_csv(master_path)
@@ -211,8 +215,9 @@ if __name__ == "__main__":
             master_df.loc[master_df['file_path'] == args.file_path, 'LIC'] = model_lic_str
             # Also adding Bias Amp as it's the key indicator of debiasing success
             master_df.loc[master_df['file_path'] == args.file_path, 'Bias_Amp'] = bias_amp_str
+            master_df.loc[idx, 'Timestamp'] = timestamp
             master_df.to_csv(master_path, index=False)
-            print(f"Updated master table: {master_path}")
+            print(f"Updated master table: {master_path} at {timestamp}")
     else:
         print("Warning: eval_results_2.csv not found. Master row update skipped.")
 

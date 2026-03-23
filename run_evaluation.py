@@ -12,8 +12,8 @@ All metric computation comes from unified_debiasing/evaluation.py:
 
 Metrics computed:
     - METEOR      : caption quality. Requires Java (meteor-1.5.jar runs as a subprocess).
-    - CIDEr       : caption quality. Pure Python, fast.
-    - BLEU-4      : caption quality. Pure Python, fast.
+    - CIDEr       : caption quality. Python, fast.
+    - BLEU-4      : caption quality. Python, fast.
     - CLIPScore   : image-caption similarity. Requires GPU + image dir. Set COCO_IMG_DIR below to enable.
     - SPICE       : caption quality (scene graph). Requires Java. Set RUN_SPICE=True below to enable.
     - Male/Female/Overall/Composite Misclassification Rate : gender bias metrics.
@@ -41,11 +41,10 @@ RESULTS_FILES = [
 ]
 
 # Set to the COCO val2014 image directory to enable CLIPScore, or None to skip
-# COCO_IMG_DIR = None
-COCO_IMG_DIR = "/home/s2142414/VL_Debiasing/data/COCO/images/val2014" 
+COCO_IMG_DIR = None  # e.g. "data/COCO/images/val2014"
 
 # Set to True to run SPICE (slow, requires Java, but pre-computed once not 200x)
-RUN_SPICE = True
+RUN_SPICE = False
 
 # ─────────────────────────────────────────────────────────────────────────────
 
