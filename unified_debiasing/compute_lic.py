@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 
 # -----------------------------------------------------------------------------
-# 1. Masking Logic (Exactly from Hendricks et al. / Hirota et al.)
+# Masking Logic (Exactly from Hendricks et al. / Hirota et al.)
 # -----------------------------------------------------------------------------
 MALE_WORDS = ['man', 'men', 'boy', 'boys', 'he', 'his', 'him', 'himself', 'gentleman', 'gentlemen', 'male', 'males', 'guy', 'guys', 'father', 'fathers', 'son', 'sons', 'brother', 'brothers', 'husband', 'husbands', 'uncle', 'uncles']
 FEMALE_WORDS = ['woman', 'women', 'girl', 'girls', 'she', 'her', 'hers', 'herself', 'lady', 'ladies', 'female', 'females', 'mother', 'mothers', 'daughter', 'daughters', 'sister', 'sisters', 'wife', 'wives', 'aunt', 'aunts']
@@ -34,7 +34,7 @@ def get_first_gt(caption_str):
     return ""
 
 # -----------------------------------------------------------------------------
-# 2. PyTorch Dataset
+# PyTorch Dataset
 # -----------------------------------------------------------------------------
 class CaptionDataset(torch.utils.data.Dataset):
     """Inherit pytorch encodings and labels"""
@@ -51,15 +51,17 @@ class CaptionDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 # -----------------------------------------------------------------------------
-# 3. BERT Training Loop (10 iterations) - ON CLUSTER
+# 3. BERT Training Loop (10 iterations) - ON CLUSTER - 1(locally, also batch size 1)
 # -----------------------------------------------------------------------------
-def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
+def compute_lic_for_texts(texts, labels, model_path, num_iterations=1):
     scores = []
-    model_path = os.path.expanduser("~/VL_Debiasing/LIC_huggingface")
+    # model_path = os.path.expanduser("~/VL_Debiasing/LIC_huggingface")
+    model_path = "./LIC_huggingface"
     
     # Suppress heavy logging
     os.environ["WANDB_DISABLED"] = "true"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    print(">>> Loading Tokenizer...")
     tokenizer = BertTokenizer.from_pretrained(model_path, local_files_only=True)
 
     for i in range(num_iterations):
@@ -68,7 +70,7 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
         train_texts, test_texts, train_labels, test_labels = train_test_split(
             texts, labels, test_size=0.2, random_state=i
         )
-        
+        print(">>> Encoding Data...")
         train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=64)
         test_encodings = tokenizer(test_texts, truncation=True, padding=True, max_length=64) # max tokens = 64
         
@@ -76,13 +78,15 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
         test_dataset = CaptionDataset(test_encodings, test_labels)
         
         #BERT model, (2 choices M, F), unbiased model every iteration
+        print(">>> Initializing BERT Model...")
         model = BertForSequenceClassification.from_pretrained(model_path, num_labels=2, local_files_only=True)
 
+        # CLUSTER TRAINING ARGUMENTS
         training_args = TrainingArguments(
             output_dir='./results_temp',          
             num_train_epochs=3,              
             per_device_train_batch_size=64,  # Takes advantage of your 48GB GPU
-            per_device_eval_batch_size=64,   
+            per_device_eval_batch_size=64,
             warmup_steps=100,                
             weight_decay=0.01,               
             logging_strategy="no",
@@ -90,7 +94,22 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
             save_strategy="no",
             report_to="none"
         )
-        
+
+        # LOCAL TRAINING ARGUMENTS
+        training_args = TrainingArguments(
+        output_dir='./results_temp',          
+        num_train_epochs=1,              # Reduce from 3 to 1 for the test
+        per_device_train_batch_size=4,   # Reduce from 64 to 4 (Crucial for Mac RAM)
+        per_device_eval_batch_size=4,   
+        warmup_steps=10,                 # Lower warmup for small test
+        weight_decay=0.01,               
+        logging_strategy="steps",        # Change "no" to "steps" so you see progress
+        logging_steps=10,                # Print progress every 10 steps
+        eval_strategy="no",
+        save_strategy="no",
+        report_to="none",
+        )
+            
         trainer = Trainer(
             model=model,                         
             args=training_args,                  
@@ -99,11 +118,6 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
         )
         
         trainer.train()
-
-        # clear the GPU after each iteration
-        del model
-        del trainer
-        torch.cuda.empty_cache()
         
         # Evaluate on test set
         predictions = trainer.predict(test_dataset) # take 20% data, predict gender 
@@ -112,6 +126,11 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
         
         print(f"Accuracy for iteration {i+1}: {accuracy:.4f}")
         scores.append(accuracy)
+
+        # clear the GPU after each iteration
+        del model
+        del trainer
+        torch.cuda.empty_cache()
         
     return np.mean(scores), np.std(scores)
 
@@ -141,12 +160,13 @@ if __name__ == "__main__":
     texts_model = df['masked_model'].tolist()
     labels = df['label'].tolist()
 
+    #### CHANGE NUM_TERATIONS TO 10 FOR CLUSTER
     print("\n=============================================")
     print("1/2: Computing LIC for HUMAN Captions")
-    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=10)    
+    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=1)    
     print("\n=============================================")
     print("2/2: Computing LIC for MODEL Captions")
-    model_mean, model_std = compute_lic_for_texts(texts_model, labels, model_path, num_iterations=10)
+    model_mean, model_std = compute_lic_for_texts(texts_model, labels, model_path, num_iterations=1)
 
     # -----------------------------------------------------------------------------
     # 5. LIC evaluation metrics
