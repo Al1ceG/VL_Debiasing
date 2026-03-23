@@ -83,7 +83,7 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
 
         # CLUSTER TRAINING ARGUMENTS
         training_args = TrainingArguments(
-            output_dir='./results_temp',          
+            output_dir='./.results_temp',          
             num_train_epochs=3,              
             per_device_train_batch_size=64,  # Takes advantage of your 48GB GPU
             per_device_eval_batch_size=64,
@@ -197,51 +197,54 @@ if __name__ == "__main__":
     print(f"  > Bias Amplification: {bias_amp_str}")
     print("#"*60 + "\n")
 
-    # # -------------------------------------------------------------------------
-    # # 5. Update Master Table (eval_results_2.csv) - update existing row
-    # # -------------------------------------------------------------------------
-    # # This targets: /home/s2887183/VLD/VL_Debiasing/results/eval_results_2.csv
-    # master_path = os.path.join(output_dir, "eval_results_2.csv")
+    # -------------------------------------------------------------------------
+    # 5. Update Master Table (eval_results_2.csv) - update existing row
+    # -------------------------------------------------------------------------
+    master_path = os.path.join(output_dir, "eval_results_2.csv")
 
-    # if os.path.exists(master_path):
-    #     master_df = pd.read_csv(master_path)
-
-    #     # Ensure all columns exist
-    #     for col in ['LIC', 'Bias_Amp', 'Timestamp', 'Notes']:
-    #         if col not in master_df.columns:
-    #             master_df[col] = "N/A"
-
-    #     target_match = args.file_path 
+    if os.path.exists(master_path):
+        master_df = pd.read_csv(master_path)
         
-    #     if target_match in master_df['file_path'].values:
-    #         # CASE A: UPDATE existing row
-    #         idx = master_df['file_path'] == target_match
-    #         master_df.loc[idx, 'LIC'] = model_lic_str
-    #         master_df.loc[idx, 'Bias_Amp'] = bias_amp_str
-    #         master_df.loc[idx, 'Timestamp'] = current_ts
-    #         master_df.loc[idx, 'Notes'] = "Updated LIC metrics"
-    #         print(f"Updated existing row for {target_match}")
-    #     else:
-    #         # CASE B: APPEND new row if not found
-    #         new_row = {
-    #             'file_path': target_match,
-    #             'LIC': model_lic_str,
-    #             'Bias_Amp': bias_amp_str,
-    #             'Timestamp': current_ts,
-    #             'Notes': "New entry added during LIC run"
-    #         }
-    #         master_df = pd.concat([master_df, pd.DataFrame([new_row])], ignore_index=True)
-    #         print(f"➕ Added brand new row for {target_match}")
+        # 1. FIX: Convert columns to 'object' so they can hold text like "±" or "N/A"
+        for col in ['LIC', 'Bias_Amp', 'Timestamp', 'Notes']:
+            if col not in master_df.columns:
+                master_df[col] = "N/A"
+            master_df[col] = master_df[col].astype(object)
+
+        # 2. Match based on the file path (e.g., "results/clip_cap_baseline.csv")
+        target_match = args.file_path 
+        
+        if target_match in master_df['file_path'].values:
+            # CASE A: UPDATE existing row
+            idx = master_df['file_path'] == target_match
+            master_df.loc[idx, 'LIC'] = model_lic_str
+            master_df.loc[idx, 'Bias_Amp'] = bias_amp_str
+            master_df.loc[idx, 'Timestamp'] = current_ts
+            master_df.loc[idx, 'Notes'] = "Updated LIC metrics"
+            print(f"Updated existing row for {target_match}")
+        else:
+            # CASE B: APPEND new row if not found
+            new_row = {
+                'file_path': target_match,
+                'LIC': model_lic_str,
+                'Bias_Amp': bias_amp_str,
+                'Timestamp': current_ts,
+                'Notes': "New entry added during LIC run"
+            }
+            master_df = pd.concat([master_df, pd.DataFrame([new_row])], ignore_index=True)
+            print(f" Added brand new row for {target_match}")
             
-    #     master_df.to_csv(master_path, index=False)
-    # else:
-    #     # CASE C: CREATE the file if it doesn't exist at all
-    #     print(f"Creating new master table at {master_path}")
-    #     new_df = pd.DataFrame([{
-    #         'file_path': args.file_path,
-    #         'LIC': model_lic_str,
-    #         'Bias_Amp': bias_amp_str,
-    #         'Timestamp': current_ts,
-    #         'Notes': "Initial Master Table Creation"
-    #     }])
-    #     new_df.to_csv(master_path, index=False)
+        # 3. Save the final result
+        master_df.to_csv(master_path, index=False)
+
+    else:
+        # CASE C: CREATE the file if it doesn't exist at all
+        print(f"Creating new master table at {master_path}")
+        new_df = pd.DataFrame([{
+            'file_path': args.file_path,
+            'LIC': model_lic_str,
+            'Bias_Amp': bias_amp_str,
+            'Timestamp': current_ts,
+            'Notes': "Initial Master Table Creation"
+        }])
+        new_df.to_csv(master_path, index=False)
