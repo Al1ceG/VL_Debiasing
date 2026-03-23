@@ -88,7 +88,7 @@ for clip_model in model_list:
     prefix = clip_model.replace("/", "").replace('-', '')
 
     # Process training set
-    save_path_train = f'embedding/fairface_{prefix}_train.pt'
+    save_path_train = f'unified_debiasing/embedding/fairface_{prefix}_train.pt'
     if os.path.exists(save_path_train):
         print(f"Training file already exists at: {save_path_train}. Skipping.")
     else:
@@ -115,7 +115,7 @@ for clip_model in model_list:
             print(f'Training file saved at: {save_path_train}')
 
     # Process validation set
-    save_path_val = f'embedding/fairface_{prefix}_val.pt'
+    save_path_val = f'unified_debiasing/embedding/fairface_{prefix}_val.pt'
     if os.path.exists(save_path_val):
         print(f"Validation file already exists at: {save_path_val}. Skipping.")
     else:

@@ -29,8 +29,8 @@ clip_model = "ViT-B/32"
 clip_name = clip_model.replace("/", "").replace('-', '')
 device = "cuda:0" if torch.cuda.is_available() else "cpu"  # Use the remapped device index
 
-embedding = torch.load(f'embedding/fairface_{clip_name}_train.pt')
-embedding_val = torch.load(f'embedding/fairface_{clip_name}_val.pt')
+embedding = torch.load(f'unified_debiasing/embedding/fairface_{clip_name}_train.pt')
+embedding_val = torch.load(f'unified_debiasing/embedding/fairface_{clip_name}_val.pt')
 
 X_train = embedding['image_embeddings']
 y_train = embedding['sensitive_attributes'][:, 1]
@@ -109,7 +109,7 @@ model.load_state_dict(torch.load(model_path),strict=False)
 model = model.eval().to(device)
 
 # Process and save train embeddings
-process_embeddings(X_train, y_train, model, prefix_length, tokenizer, f'embedding/clip_cap_decoder_fairface_train.pt')
+process_embeddings(X_train, y_train, model, prefix_length, tokenizer, f'unified_debiasing/embedding/clip_cap_decoder_fairface_train.pt')
 
 # Process and save test embeddings
-process_embeddings(X_test, y_test, model, prefix_length, tokenizer, f'embedding/clip_cap_decoder_fairface_test.pt')
+process_embeddings(X_test, y_test, model, prefix_length, tokenizer, f'unified_debiasing/embedding/clip_cap_decoder_fairface_test.pt')
