@@ -57,7 +57,6 @@ class CaptionDataset(torch.utils.data.Dataset):
 def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
     scores = []
     # model_path = os.path.expanduser("~/VL_Debiasing/LIC_huggingface")
-    model_path = "./LIC_huggingface"
     
     # Suppress heavy logging
     os.environ["WANDB_DISABLED"] = "true"
@@ -140,85 +139,109 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file_path", type=str, required=True, help="Path to the captions CSV file")
+    parser.add_argument("--file_path", type=str, required=True)
     args = parser.parse_args()
 
-    model_path = os.path.expanduser("~/VL_Debiasing/LIC_huggingface")
-    print(f"Loading data from {args.file_path}")
+    # Model Path Setup
+    model_path = os.path.expanduser("~/VLD/VL_Debiasing/LIC_huggingface")    
+    
+    # Load Data
+    print(f"\n>>> PROCESSING: {args.file_path}")
     df = pd.read_csv(args.file_path)
-
-    # Filter valid genders and map to binary (Male=0, Female=1)
     df = df[df['ground_truth_gender'].isin(['Male', 'Female'])].copy()
     df['label'] = df['ground_truth_gender'].map({'Male': 0, 'Female': 1})
 
-    # Extract first human caption & mask text
-    print("Masking gender words...")
     df['gt_first'] = df['gt_captions'].apply(get_first_gt)
     df['masked_human'] = df['gt_first'].apply(mask_gender_words)
     df['masked_model'] = df['generated_text'].apply(mask_gender_words)
 
-    texts_human = df['masked_human'].tolist()
-    texts_model = df['masked_model'].tolist()
-    labels = df['label'].tolist()
-
-    #### CHANGE NUM_TERATIONS TO 10 FOR CLUSTER
-    print("\n=============================================")
-    print("1/2: Computing LIC for HUMAN Captions")
-    human_mean, human_std = compute_lic_for_texts(texts_human, labels, model_path, num_iterations=10)    
-    print("\n=============================================")
-    print("2/2: Computing LIC for MODEL Captions")
-    model_mean, model_std = compute_lic_for_texts(texts_model, labels, model_path, num_iterations=10)
-
-    # -----------------------------------------------------------------------------
-    # 5. LIC evaluation metrics
-    # -----------------------------------------------------------------------------
-
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Calculate the core metrics
-    bias_amp = model_mean - human_mean
-    bias_amp_str = f"{bias_amp:.4f}"
-    model_lic_str = f"{model_mean:.4f} ± {model_std:.4f}"
-    human_lic_str = f"{human_mean:.4f} ± {human_std:.4f}"
-
-    # FILE 1: The "Deep Dive" (all_lic_results.csv)
-    # Includes every number to track calculations
-    deep_dive_path = os.path.join(os.path.dirname(args.file_path), "all_lic_results.csv")
-    deep_dive_data = {
-        'file_path': args.file_path,
-        'Human_LIC_Mean': human_mean,
-        'Human_LIC_Std': human_std,
-        'Model_LIC_Mean': model_mean,
-        'Model_LIC_Std': model_std,
-        'Bias_Amplification': bias_amp,
-        'Human_Full': human_lic_str,
-        'Model_Full': model_lic_str
-    }
+    # 1/2: Human LIC
+    print("\nStarting Human LIC calculation...")
+    h_mean, h_std = compute_lic_for_texts(df['masked_human'].tolist(), df['label'].tolist(), model_path, 10)    
     
-    deep_df = pd.DataFrame([deep_dive_data])
-    if os.path.exists(deep_dive_path):
-        deep_df.to_csv(deep_dive_path, mode='a', header=False, index=False)
-    else:
-        deep_df.to_csv(deep_dive_path, index=False)
+    # 2/2: Model LIC
+    print("\nStarting Model LIC calculation...")
+    m_mean, m_std = compute_lic_for_texts(df['masked_model'].tolist(), df['label'].tolist(), model_path, 10)
 
-    # FILE 2: The "Master Table" (eval_results_2.csv)
-    # Appends only the most important metric (LIC) to the existing evaluation row
-    master_path = os.path.join(os.path.dirname(args.file_path), "eval_results_2.csv")
-    idx = master_df['file_path'] == args.file_path
+    # 1. Prepare the strings for saving (Fixed variable names)
+    current_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    bias_amp = m_mean - h_mean
+    
+    # We create these strings so they can be used in both CSV files
+    human_lic_str = f"{h_mean:.4f} ± {h_std:.4f}"
+    model_lic_str = f"{m_mean:.4f} ± {m_std:.4f}"
+    bias_amp_str = f"{bias_amp:.4f}"
 
-    if os.path.exists(master_path):
-        master_df = pd.read_csv(master_path)
+    # 2. SAVE RESULTS (Deep Dive CSV)
+    output_dir = os.path.dirname(args.file_path)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-        # Match the row by file_path to add the LIC metric
-        if args.file_path in master_df['file_path'].values:
-            # We use the Model LIC string as the primary metric for the master table
-            master_df.loc[master_df['file_path'] == args.file_path, 'LIC'] = model_lic_str
-            # Also adding Bias Amp as it's the key indicator of debiasing success
-            master_df.loc[master_df['file_path'] == args.file_path, 'Bias_Amp'] = bias_amp_str
-            master_df.loc[idx, 'Timestamp'] = timestamp
-            master_df.to_csv(master_path, index=False)
-            print(f"Updated master table: {master_path} at {timestamp}")
-    else:
-        print("Warning: eval_results_2.csv not found. Master row update skipped.")
+    deep_dive_path = os.path.join(output_dir, "all_lic_results.csv")
+    res_df = pd.DataFrame([{
+        'File': os.path.basename(args.file_path),
+        'Human_LIC': human_lic_str,
+        'Model_LIC': model_lic_str,
+        'Bias_Amp': bias_amp_str,
+        'Timestamp': current_ts
+    }])
+    res_df.to_csv(deep_dive_path, mode='a', header=not os.path.exists(deep_dive_path), index=False)
 
-    print(f"\nCalculation Tracked: Model({model_lic_str}) - Human({human_lic_str}) = {bias_amp_str}")
+    # 3. PRINT SUMMARY BOX
+    print("\n" + "#"*60)
+    print(f" FINAL METRICS: {os.path.basename(args.file_path)}")
+    print(f" Calculated at: {current_ts}")
+    print("#"*60)
+    print(f"  > Human LIC:         {human_lic_str}")
+    print(f"  > Model LIC:         {model_lic_str}")
+    print(f"  > Bias Amplification: {bias_amp_str}")
+    print("#"*60 + "\n")
+
+    # # -------------------------------------------------------------------------
+    # # 5. Update Master Table (eval_results_2.csv) - update existing row
+    # # -------------------------------------------------------------------------
+    # # This targets: /home/s2887183/VLD/VL_Debiasing/results/eval_results_2.csv
+    # master_path = os.path.join(output_dir, "eval_results_2.csv")
+
+    # if os.path.exists(master_path):
+    #     master_df = pd.read_csv(master_path)
+
+    #     # Ensure all columns exist
+    #     for col in ['LIC', 'Bias_Amp', 'Timestamp', 'Notes']:
+    #         if col not in master_df.columns:
+    #             master_df[col] = "N/A"
+
+    #     target_match = args.file_path 
+        
+    #     if target_match in master_df['file_path'].values:
+    #         # CASE A: UPDATE existing row
+    #         idx = master_df['file_path'] == target_match
+    #         master_df.loc[idx, 'LIC'] = model_lic_str
+    #         master_df.loc[idx, 'Bias_Amp'] = bias_amp_str
+    #         master_df.loc[idx, 'Timestamp'] = current_ts
+    #         master_df.loc[idx, 'Notes'] = "Updated LIC metrics"
+    #         print(f"Updated existing row for {target_match}")
+    #     else:
+    #         # CASE B: APPEND new row if not found
+    #         new_row = {
+    #             'file_path': target_match,
+    #             'LIC': model_lic_str,
+    #             'Bias_Amp': bias_amp_str,
+    #             'Timestamp': current_ts,
+    #             'Notes': "New entry added during LIC run"
+    #         }
+    #         master_df = pd.concat([master_df, pd.DataFrame([new_row])], ignore_index=True)
+    #         print(f"➕ Added brand new row for {target_match}")
+            
+    #     master_df.to_csv(master_path, index=False)
+    # else:
+    #     # CASE C: CREATE the file if it doesn't exist at all
+    #     print(f"Creating new master table at {master_path}")
+    #     new_df = pd.DataFrame([{
+    #         'file_path': args.file_path,
+    #         'LIC': model_lic_str,
+    #         'Bias_Amp': bias_amp_str,
+    #         'Timestamp': current_ts,
+    #         'Notes': "Initial Master Table Creation"
+    #     }])
+    #     new_df.to_csv(master_path, index=False)

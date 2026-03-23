@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
-#SBATCH --output=/home/s2142414/logs/eval-%j.out
+#SBATCH --output=/home/s2887183/VLD/VL_Debiasing/logs/lic_%j.out
 
 # Ensure directories exist
 mkdir -p /home/s2142414/logs

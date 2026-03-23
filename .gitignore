@@ -1,35 +1,45 @@
-data/COCO
-data/facet
-data/fairface
-data/utkface
-clip_debiasing/models/clipcap/clip_cap_coco_weight.pt
-unified_debiasing/embedding
-unified_debiasing/__pycache__
-clip_debiasing/models/clipcap/__pycache__
-*.pyc
-data/.DS_Store
-**/.DS_Store
+# GITIGNORE SYMBOL CHEAT SHEET
+# ------------------------------------------------------------------------------
+# * (Wildcard)    : Matches any string (e.g., *.pdf ignores all PDF files).
+# /  (Separator)   : Defines a folder (e.g., logs/ ignores the entire directory).
+# ** (Recursive)   : Matches any depth (e.g., **/tmp/ finds 'tmp' in any subfolder).
+# .  (Literal)     : Usually marks hidden files or extensions (e.g., .vscode/).
+# !  (Negation)    : "Un-ignores" a specific file (e.g., !data/keep_me.txt).
+# ------------------------------------------------------------------------------
 
-exp/
-
-# Ignore Slurm output logs
-slurm-*.out
-
-# Ignore large model checkpoints
+# --- Data and Models (Too large for Git) ---
+data/
+LIC_huggingface/
 vitb16_debiased_model/
 vitb32_debiased_model/
+clip_debiasing/models/clipcap/clip_cap_coco_weight.pt
+unified_debiasing/embedding/
 
-# Ignore Python cache
+# --- Virtual Environment (Avoid pushing libraries) ---
+venv_mlp/
+venv/
+.venv/
+
+# --- Training & Experiment Outputs ---
+exp/
+results_temp/
+logs/
+slurm-*.out
+.submit_eval.sh.swp
+
+
+# --- Python & System Junk ---
 __pycache__/
 *.pyc
+.DS_Store
+**/.DS_Store
+.ipynb_checkpoints/
+*.swp
+*~
+# --- Editor Specific ---
+.vscode/
+.idea/
 
-# Ignore local temp files
-tmp/
-
-lick-caption-bias/
-LIC_huggingface/
-
+# --- Research Papers & Documents ---
+*.pdf
 MLP_G061.pdf
-joint_debiasing/Joint Vision-Language Social Bias Removal for CLIP.pdf
-unified_debiasing/NeurIPS-2024-a-unified-debiasing-approach-for-vision-language-models-across-modalities-and-tasks-Paper-Conference.pdf
-lick-caption-bias/
