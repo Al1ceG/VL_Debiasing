@@ -14,6 +14,7 @@ vitb16_debiased_model/
 vitb32_debiased_model/
 clip_debiasing/models/clipcap/clip_cap_coco_weight.pt
 unified_debiasing/embedding/
+lick-caption-bias/
 
 # --- Virtual Environment (Avoid pushing libraries) ---
 venv_mlp/
