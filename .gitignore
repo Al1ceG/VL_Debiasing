@@ -11,5 +11,7 @@ data/.DS_Store
 results/
 data/
 vitb16_debiased_model/
-vitb32_debiased_model/
+vitb32_debiased_model
 LIC_huggingface/
+vl_debias/
+__MACOSX/._clip_cap_coco_weight.pt

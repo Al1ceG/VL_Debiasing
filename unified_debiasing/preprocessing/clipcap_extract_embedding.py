@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = str(2)
+os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
 
 import torch
 import torch.nn.functional as nnf
@@ -28,9 +28,10 @@ print(f"Extract CLIP-CAP's decoder embedding.")
 clip_model = "ViT-B/32"
 clip_name = clip_model.replace("/", "").replace('-', '')
 device = "cuda:0" if torch.cuda.is_available() else "cpu"  # Use the remapped device index
+print(f"Using device: {device}")
 
-embedding = torch.load(f'unified_debiasing/embedding/fairface_{clip_name}_train.pt')
-embedding_val = torch.load(f'unified_debiasing/embedding/fairface_{clip_name}_val.pt')
+embedding = torch.load(f'unified_debiasing/embedding/fairface_{clip_name}_train.pt', map_location=device)
+embedding_val = torch.load(f'unified_debiasing/embedding/fairface_{clip_name}_val.pt', map_location=device)
 
 X_train = embedding['image_embeddings']
 y_train = embedding['sensitive_attributes'][:, 1]
@@ -104,7 +105,7 @@ prefix_length = 10
 model_path = 'clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
-model.load_state_dict(torch.load(model_path),strict=False)
+model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
 
 model = model.eval().to(device)
 

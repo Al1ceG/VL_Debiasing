@@ -1,6 +1,6 @@
 import os
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = str(2)
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import torch
@@ -72,130 +72,72 @@ class ImageDataset(Dataset):
         else:
             return image, sens, label
 
-label = None
-sens = ["age", "gender", "race"]
-root_dir = 'data/fairface'
+if __name__ == '__main__':
+    label = None
+    sens = ["age", "gender", "race"]
+    root_dir = 'data/fairface'
 
-train_dataset, val_dataset, _ = ImageLoader()
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
-model_list = ['ViT-B/32']  # Choose the baseline in CLIP
-print(f"Extract CLIP image and text embedding for debiasing with baseline models {model_list}.")
+    train_dataset, val_dataset, _ = ImageLoader()
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    model_list = ['ViT-B/32']  # Choose the baseline in CLIP
+    print(f"Extract CLIP image and text embedding for debiasing with baseline models {model_list}.")
 
-for clip_model in model_list:
-    print(f"Processing model {clip_model}.")
-    model, preprocess = clip.load(clip_model, device=device)
-    model.eval()
-    prefix = clip_model.replace("/", "").replace('-', '')
+    for clip_model in model_list:
+        print(f"Processing model {clip_model}.")
+        model, preprocess = clip.load(clip_model, device=device)
+        model.eval()
+        prefix = clip_model.replace("/", "").replace('-', '')
 
-    # Process training set
-    save_path_train = f'unified_debiasing/embedding/fairface_{prefix}_train.pt'
-    if os.path.exists(save_path_train):
-        print(f"Training file already exists at: {save_path_train}. Skipping.")
-    else:
-        bs = 128
-        train_data = ImageDataset(train_dataset, sens, label, root_dir, preprocess)
-        train_loader = DataLoader(train_data, batch_size=bs, shuffle=False, num_workers=32)
+        # Process training set
+        save_path_train = f'unified_debiasing/embedding/fairface_{prefix}_train.pt'
+        if os.path.exists(save_path_train):
+            print(f"Training file already exists at: {save_path_train}. Skipping.")
+        else:
+            bs = 128
+            train_data = ImageDataset(train_dataset, sens, label, root_dir, preprocess)
+            train_loader = DataLoader(train_data, batch_size=bs, shuffle=False, num_workers=8)
 
-        with torch.no_grad():
-            image_embeddings_list = []
-            sensitive_attributes_list = []
+            with torch.no_grad():
+                image_embeddings_list = []
+                sensitive_attributes_list = []
 
-            for x_batch, s_batch in tqdm(train_loader):
-                x_batch = x_batch.to(device)
-                image_features = model.encode_image(x_batch)
-                image_features = image_features / image_features.norm(dim=1, keepdim=True)
+                for x_batch, s_batch in tqdm(train_loader):
+                    x_batch = x_batch.to(device)
+                    image_features = model.encode_image(x_batch)
+                    image_features = image_features / image_features.norm(dim=1, keepdim=True)
 
-                image_embeddings_list.append(image_features.cpu())
-                sensitive_attributes_list.append(s_batch)
+                    image_embeddings_list.append(image_features.cpu())
+                    sensitive_attributes_list.append(s_batch)
 
-            torch.save({
-                'image_embeddings': torch.cat(image_embeddings_list),
-                'sensitive_attributes': torch.cat(sensitive_attributes_list),
-            }, save_path_train)
-            print(f'Training file saved at: {save_path_train}')
+                torch.save({
+                    'image_embeddings': torch.cat(image_embeddings_list),
+                    'sensitive_attributes': torch.cat(sensitive_attributes_list),
+                }, save_path_train)
+                print(f'Training file saved at: {save_path_train}')
 
-    # Process validation set
-    save_path_val = f'unified_debiasing/embedding/fairface_{prefix}_val.pt'
-    if os.path.exists(save_path_val):
-        print(f"Validation file already exists at: {save_path_val}. Skipping.")
-    else:
-        bs = 128
-        val_data = ImageDataset(val_dataset, sens, label, root_dir, preprocess)
-        val_loader = DataLoader(val_data, batch_size=bs, shuffle=False, num_workers=32)
+        # Process validation set
+        save_path_val = f'unified_debiasing/embedding/fairface_{prefix}_val.pt'
+        if os.path.exists(save_path_val):
+            print(f"Validation file already exists at: {save_path_val}. Skipping.")
+        else:
+            bs = 128
+            val_data = ImageDataset(val_dataset, sens, label, root_dir, preprocess)
+            val_loader = DataLoader(val_data, batch_size=bs, shuffle=False, num_workers=8)
 
-        with torch.no_grad():
-            image_embeddings_list = []
-            sensitive_attributes_list = []
+            with torch.no_grad():
+                image_embeddings_list = []
+                sensitive_attributes_list = []
 
-            for x_batch, s_batch in tqdm(val_loader):
-                x_batch = x_batch.to(device)
-                image_features = model.encode_image(x_batch)
-                image_features = image_features / image_features.norm(dim=1, keepdim=True)
+                for x_batch, s_batch in tqdm(val_loader):
+                    x_batch = x_batch.to(device)
+                    image_features = model.encode_image(x_batch)
+                    image_features = image_features / image_features.norm(dim=1, keepdim=True)
 
-                image_embeddings_list.append(image_features.cpu())
-                sensitive_attributes_list.append(s_batch)
+                    image_embeddings_list.append(image_features.cpu())
+                    sensitive_attributes_list.append(s_batch)
 
-            torch.save({
-                'image_embeddings': torch.cat(image_embeddings_list),
-                'sensitive_attributes': torch.cat(sensitive_attributes_list),
-            }, save_path_val)
-            print(f'Validation file saved at: {save_path_val}')
-
-# import os
-# from datasets import load_dataset
-
-# train_dataset = load_dataset("LabHC/bias_in_bios", split='train')
-# test_dataset = load_dataset("LabHC/bias_in_bios", split='test')
-# val_dataset = load_dataset("LabHC/bias_in_bios", split='dev')
-
-# model_list = ['RN50', 'ViT-B/32']  # Choose the baseline in CLIP
-# for clip_model in model_list:
-#     print(f"Text for model {clip_model}.")
-#     model, preprocess = clip.load(clip_model, device=device)
-#     model.eval()
-#     for split in ['train', 'test', 'val']:
-#         if split == 'train':
-#             dataset = train_dataset
-#         elif split == 'val':
-#             dataset = val_dataset
-#         elif split == 'test':
-#             dataset = test_dataset
-
-#         batch_size = 128  # You can adjust the batch size according to your GPU memory
-#         prefix = clip_model.replace("/", "").replace('-', '')
-#         save_path = f'embedding/{prefix}_bios_bias_text_{split}.pt'
-        
-#         # Check if the file already exists
-#         if os.path.exists(save_path):
-#             print(f"File already exists at: {save_path}. Skipping.")
-#             continue
-        
-#         data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-#         max_tokens = 77
-#         # Inference loop
-#         all_text_features = []
-#         all_genders = []
-#         all_profession = []
-
-#         with torch.no_grad():
-#             for batch in tqdm(data_loader):
-#                 texts = batch['hard_text']  # Adjust this depending on your dataset structure
-#                 gender = batch['gender']
-#                 profession = batch['profession']
-#                 text_features = clip.tokenize(texts, truncate=True).to(device)
-#                 text_features = model.encode_text(text_features)
-#                 all_text_features.append(text_features)
-#                 all_genders.append(gender)
-#                 all_profession.append(profession)
-
-#         all_text_features = torch.cat(all_text_features, dim=0)
-#         all_genders = torch.cat(all_genders, dim=0)
-#         all_profession = torch.cat(all_profession, dim=0)
-
-#         # Save the results if the file doesn't exist
-#         torch.save({
-#             'text_embeddings': all_text_features.cpu(),
-#             'sensitive_attributes': all_genders.cpu(),
-#             'all_profession': all_profession.cpu()
-#         }, save_path)
-#         print(f'File saved at: {save_path}')
+                torch.save({
+                    'image_embeddings': torch.cat(image_embeddings_list),
+                    'sensitive_attributes': torch.cat(sensitive_attributes_list),
+                }, save_path_val)
+                print(f'Validation file saved at: {save_path_val}')
