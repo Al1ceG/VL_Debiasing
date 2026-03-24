@@ -1,13 +1,21 @@
-torch==1.7.1
-torchvision==0.8.2
-clip @ git+https://github.com/openai/CLIP.git@a1d071733d7111c9c014f024669f959182114e33
+clip==1.0
+external==0.0.1
+ipython==8.12.3
+joblib==1.4.2
+nltk==3.8.1
+numpy==2.4.3
+pandas==3.0.1
+Pillow==12.1.1
+pycocoevalcap==1.2
+scikit_learn==1.8.0
+scipy==1.17.1
+torch==2.10.0
+torchvision==0.25.0
+tqdm==4.66.5
+transformers==4.42.3
 imagenetv2-pytorch @ git+https://github.com/modestyachts/ImageNetV2_pytorch@14d4456c39fe7f02a665544dd9fc37c1a5f8b635
 ftfy
-pandas
-Pillow
 psutil
 regex
-scikit-learn
-scipy
-tqdm
 open-clip-torch
+

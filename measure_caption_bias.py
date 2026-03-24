@@ -118,19 +118,19 @@ def main():
     )
     parser.add_argument(
         '--decoder_train_embedding',
-        default="VL_Debiasing/embedding/clip_cap_decoder_fairface_train.pt",
+        default="VL_Debiasing/unified_debiasing/embedding/clip_cap_decoder_fairface_train.pt",
         type=str,
         help='Path to decoder SFID training embedding file (.pt).',
     )
     parser.add_argument(
         '--decoder_val_embedding',
-        default="VL_Debiasing/embedding/clip_cap_decoder_fairface_test.pt",
+        default="VL_Debiasing/unified_debiasing/embedding/clip_cap_decoder_fairface_test.pt",
         type=str,
         help='Path to decoder SFID validation/test embedding file (.pt).',
     )
     parser.add_argument(
         '--decoder_rf_checkpoint',
-        default="VL_Debiasing/checkpoint/CLIPCAP_text_decoder_random_forest_model.joblib",
+        default="VL_Debiasing/unified_debiasing/checkpoint/CLIPCAP_text_decoder_random_forest_model.joblib",
         type=str,
         help='Path to save/load decoder SFID random forest checkpoint.',
     )
