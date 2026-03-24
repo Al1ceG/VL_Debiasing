@@ -107,7 +107,7 @@ def main():
 
     parser.add_argument(
         '--results_filename',
-        default="VL_Debiasing/results/clipcap_debiased.csv",
+        default="VL_Debiasing/results/clipcap_debiased_sfid_debiased.csv",
         type=str,
         help='Path to save baseline captioning results',
     )
@@ -182,7 +182,7 @@ def main():
 
     # # Load ClipCap model and CLIP image encoder
     prefix_length = 10
-    model_path = 'VL_Debiasing/clip_debiasing/models/clipcap/clip_cap_coco_weight.pt'
+    model_path = 'C:\\Users\\patta\\Desktop\\VL_Debiasing\\clip_debiasing\\models\\clipcap\\clip_cap_coco_weight.pt'
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     model = model_clipcap.ClipCaptionModel(prefix_length, device=device)
     model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
@@ -191,7 +191,7 @@ def main():
     # clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
     model = model.eval().to(device)
     
-    Debiased_clip_path = 'VL_Debiasing/vitb32_debiased_model/latest/Exp_512_1024_0.3_5e-06/best.pth'
+    Debiased_clip_path = 'VL_Debiasing\\vitb32_debiased_model\\latest\\Exp_512_1024_0.3_5e-06\\best.pth'
     backbone = 'ViT-B/32'
     mlp1_hidden_size = 512
     mlp2_hidden_size = 1024
@@ -203,7 +203,7 @@ def main():
     # clip_model.eval()
 
     # Load COCO captions annotations
-    with open('VL_Debiasing/data/COCO/annotations/captions_val2014.json', 'r') as json_data:
+    with open('VL_Debiasing\\data\\COCO\\annotations\\captions_val2014.json', 'r') as json_data:
         d = json.load(json_data)
     annotations = d['annotations']
 
@@ -218,7 +218,7 @@ def main():
 
     # TODO: not just for gender
     # Ground-truth gender per image
-    imid_2_gender = pickle.load(open('VL_Debiasing/clip_debiasing/models/clipcap/val_imid_gender.pkl', 'rb'))
+    imid_2_gender = pickle.load(open('VL_Debiasing\\clip_debiasing\\models\\clipcap\\val_imid_gender.pkl', 'rb'))
     filtered_image_ids = set(imid_2_gender.keys())
 
     # Only keep images that have a gender label
@@ -229,7 +229,7 @@ def main():
     }
 
     # IDs to remove (e.g., problematic images)
-    remove_id = pd.read_csv("VL_Debiasing/clip_debiasing/models/clipcap/remove_df.csv")['remove_id']
+    remove_id = pd.read_csv("VL_Debiasing\\clip_debiasing\\models\\clipcap\\remove_df.csv")['remove_id']
 
     results_filename = args.results_filename
     results = []

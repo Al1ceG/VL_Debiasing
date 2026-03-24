@@ -65,7 +65,7 @@ class FairFace(IATDataset):
         self.mode = mode
         self._transforms = (lambda x: x) if transforms is None else transforms
         partition = 'val' if mode == 'test' else 'train'
-        self.labels = pd.read_csv(os.path.join(self.DATA_PATH, "labels", partition, f"{partition}_labels.csv"))
+        self.labels = pd.read_csv(os.path.join(self.DATA_PATH, f"fairface_label_{partition}.csv"))
         self.labels.sort_values("file", inplace=True)
 
         if mode == "val":
@@ -104,7 +104,7 @@ class FairFace(IATDataset):
 
     def _load_fairface_sample(self, sample_labels) -> dict:
         res = Dotdict(dict(sample_labels))
-        img_fname = os.path.join(self.DATA_PATH, "imgs", "train_val", res.file)
+        img_fname = os.path.join(self.DATA_PATH, res.file)
         res.img = self._transforms(Image.open(img_fname))
         return res
 
@@ -140,7 +140,7 @@ class FairFaceDebiasing_Gender(AugmentedDataset):
         self.mode = mode
         self._transforms = (lambda x: x) if transforms is None else transforms
         partition = 'val' if mode == 'test' else 'train'
-        self.labels = pd.read_csv(os.path.join(self.DATA_PATH, "labels", partition, f"{partition}_labels.csv"))
+        self.labels = pd.read_csv(os.path.join(self.DATA_PATH, f"fairface_label_{partition}.csv"))
         self.labels.sort_values("file", inplace=True)
 
         if mode == "val":
@@ -181,7 +181,7 @@ class FairFaceDebiasing_Gender(AugmentedDataset):
     def _load_fairface_sample(self, sample_labels) -> dict:
         opposite_dict = {"Male": "Female", "Female": "Male"}
         res = Dotdict(dict(sample_labels))
-        img_fname = os.path.join(self.DATA_PATH, "imgs", "train_val", res.file)
+        img_fname = os.path.join(self.DATA_PATH, res.file)
         res.img = self._transforms(Image.open(img_fname))
         text1 = f"This is the photo of a {res.race} {res.gender.lower()} aged {res.age}."
         text2 = f"This is the photo of a {res.race} {opposite_dict[res.gender].lower()} aged {res.age}."
@@ -209,7 +209,7 @@ class FairFaceDebiasing_Age(AugmentedDataset):
         self.mode = mode
         self._transforms = (lambda x: x) if transforms is None else transforms
         partition = 'val' if mode == 'test' else 'train'
-        self.labels = pd.read_csv(os.path.join(self.DATA_PATH, "labels", partition, f"{partition}_labels.csv"))
+        self.labels = pd.read_csv(os.path.join(self.DATA_PATH, f"fairface_label_{partition}.csv"))
         self.labels.sort_values("file", inplace=True)
 
         if mode == "val":
