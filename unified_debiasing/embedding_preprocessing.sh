@@ -1,4 +1,4 @@
-#!/bin/bash\
+#!/bin/bash
 mkdir unified_debiasing/embedding
 mkdir unified_debiasing/embedding/flickr
 mkdir unified_debiasing/checkpoint

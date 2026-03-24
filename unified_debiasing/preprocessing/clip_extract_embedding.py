@@ -78,7 +78,7 @@ root_dir = 'data/fairface'
 
 train_dataset, val_dataset, _ = ImageLoader()
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
-model_list = ['RN50', 'ViT-B/32']  # Choose the baseline in CLIP
+model_list = ['ViT-B/32']  # Choose the baseline in CLIP
 print(f"Extract CLIP image and text embedding for debiasing with baseline models {model_list}.")
 
 for clip_model in model_list:
