@@ -5,6 +5,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import torch
+import random
 from sklearn.model_selection import train_test_split
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 from datetime import datetime
@@ -17,6 +18,8 @@ FEMALE_WORDS = ['woman', 'women', 'girl', 'girls', 'she', 'her', 'hers', 'hersel
 ALL_GENDERED_WORDS = MALE_WORDS + FEMALE_WORDS
 
 PATTERN = r'\b(' + '|'.join(ALL_GENDERED_WORDS) + r')\b'
+
+
 
 def mask_gender_words(text):
     """Replaces explicit gender words with the BERT [MASK] token."""
@@ -65,6 +68,14 @@ def compute_lic_for_texts(texts, labels, model_path, num_iterations=10):
     tokenizer = BertTokenizer.from_pretrained(model_path, local_files_only=True)
 
     for i in range(num_iterations):
+        # Reset all seeds at the start of each iteration
+        # Each iteration gets a different but fixed seed, so the BERT initialisation is unique 
+        # per iteration but identical every time you re-run the script
+        random.seed(42 + i)
+        np.random.seed(42 + i)
+        torch.manual_seed(42 + i)
+        torch.cuda.manual_seed_all(42 + i)
+    
         print(f"\n--- Iteration {i+1}/{num_iterations} ---")
         # 80/20 train/test split
         train_texts, test_texts, train_labels, test_labels = train_test_split(
