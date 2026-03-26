@@ -107,7 +107,7 @@ def main():
 
     parser.add_argument(
         '--results_filename',
-        default="VL_Debiasing/results/clipcap_debiased.csv",
+        default="VL_Debiasing/results/jvlbr_and_sfid_decoder.csv",
         type=str,
         help='Path to save baseline captioning results',
     )
