@@ -15,3 +15,4 @@ vitb32_debiased_model
 LIC_huggingface/
 vl_debias/
 __MACOSX/._clip_cap_coco_weight.pt
+debiased_clip_weights/
