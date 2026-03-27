@@ -1,18 +1,20 @@
 #!/bin/bash
 #SBATCH --job-name=run_eval
-#SBATCH --partition=Teachingss
+#SBATCH --partition=Teaching
+#SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --time=01:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=/home/s2887183/VLD/VL_Debiasing/logs/lic_%j.out
 
 # Environment setup
 source ~/venv_mlp/bin/activate
+mkdir -p /home/s2887183/tmp
 
 # Java needed for METEOR
 export JAVA_HOME=$HOME/jdk8u402-b06
 export PATH=$JAVA_HOME/bin:$PATH
-export TMPDIR=/home/s2142414/tmp
-mkdir -p /home/s2887183/tmp
+export TMPDIR=/home/s2887183/tmp
+
 mkdir -p /home/s2887183/VLD/VL_Debiasing/logs
 
 cd /home/s2887183/VLD/VL_Debiasing

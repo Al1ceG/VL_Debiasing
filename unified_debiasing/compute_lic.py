@@ -211,7 +211,7 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------
     # 5. Update Master Table (eval_results_2.csv) - update existing row
     # -------------------------------------------------------------------------
-    master_path = os.path.join(output_dir, "eval_results_2.csv")
+    master_path = os.path.join(output_dir, "eval_results_3_b.csv")
 
     if os.path.exists(master_path):
         master_df = pd.read_csv(master_path)
@@ -240,7 +240,7 @@ if __name__ == "__main__":
                 'LIC': model_lic_str,
                 'Bias_Amp': bias_amp_str,
                 'Timestamp': current_ts,
-                'Notes': "New entry added during LIC run"
+                'Notes': f"New entry added during LIC run {target_match}"
             }
             master_df = pd.concat([master_df, pd.DataFrame([new_row])], ignore_index=True)
             print(f" Added brand new row for {target_match}")

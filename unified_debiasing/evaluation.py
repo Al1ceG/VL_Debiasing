@@ -20,7 +20,7 @@ from pprint import pprint
 import subprocess
 import threading
 from sklearn.utils import resample
-
+from datetime import datetime
 from pycocoevalcap.meteor import meteor as meteor_module  # Import the module
 
 
@@ -416,9 +416,16 @@ def evaluate_captions_max(df):
 
     results = {method[0]: 0 for scorer, method in scorers}
 
+    # YOUR NEW CLEANING LOGIC
+    clean_gts = {k: v for k, v in gts.items() if len(v) > 0}
+    clean_res = {k: v for k, v in res.items() if k in clean_gts}
+    
+    # Also clean the neutral GTs to be safe
+    clean_gts_neutral = {k: v for k, v in gts_neutral.items() if len(v) > 0}
+    clean_res_neutral = {k: v for k, v in res.items() if k in clean_gts_neutral}
     for scorer, method in tqdm(scorers):
-        score_orig,    scores_orig    = scorer.compute_score(gts,         res)
-        score_neutral, scores_neutral = scorer.compute_score(gts_neutral, res)
+        score_orig, scores_orig = scorer.compute_score(clean_gts, clean_res)
+        score_neutral, scores_neutral = scorer.compute_score(clean_gts_neutral, clean_res_neutral)
 
         if method[0] == "BLEU-4":
             # Bleu(4).compute_score() returns a list-of-lists; index 3 = BLEU-4 per image
@@ -522,22 +529,24 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
         caption_able = (2 / (1 / meteor_frac + 1 / fairness_term)) * 100
     else:
         caption_able = 0.0
-
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Prepare the result row with mean ± margin format
     new_row = {
         'file_path': file_path,
+        'datetime': current_time,
         'Male Misclassification Rate': f"{male_mis_mean:.2f} ± {male_mis_margin:.2f}",
         'Female Misclassification Rate': f"{female_mis_mean:.2f} ± {female_mis_margin:.2f}",
         'Overall Misclassification Rate': f"{overall_mis_mean:.2f} ± {overall_mis_margin:.2f}",
         'Composite Misclassification Rate': f"{composite_mis_mean:.2f} ± {composite_mis_margin:.2f}",
-        'METEOR': f"{meteor_mean:.2f} ± {meteor_margin:.2f}",
+        'maxMETEOR': f"{meteor_mean:.2f} ± {meteor_margin:.2f}",
         'CIDEr':        f"{cider_mean:.4f} ± {cider_margin:.4f}",
         'BLEU-4 (%)':   f"{bleu4_mean:.2f} ± {bleu4_margin:.2f}",
-        'Caption-ABLE': f"{caption_able:.2f}",
+        #'Caption-ABLE': f"{caption_able:.2f}",
+        
     }
     if run_spice:
         spice_mean, spice_margin = mean_margin(ci_lower['SPICE']*100, ci_upper['SPICE']*100)
-        new_row['SPICE'] = f"{spice_mean:.2f} ± {spice_margin:.2f}"
+        new_row['maxSPICE'] = f"{spice_mean:.2f} ± {spice_margin:.2f}"
     if 'CLIPScore' in ci_lower:
         clip_mean, clip_margin = mean_margin(ci_lower['CLIPScore'], ci_upper['CLIPScore'])
         new_row['CLIPScore'] = f"{clip_mean:.2f} ± {clip_margin:.2f}"
@@ -546,7 +555,7 @@ def evaluate_image_captioning(file_path, run_spice=False, coco_img_dir=None, cli
     pprint(new_row)
 
     # Save results to a CSV — appends a new row each run so all experiments are in one place
-    eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results.csv")
+    eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results_3_b.csv")
     results_df = pd.DataFrame([new_row])
     if os.path.exists(eval_results_path):
         results_df.to_csv(eval_results_path, mode='a', header=False, index=False)

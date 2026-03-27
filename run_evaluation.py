@@ -36,15 +36,22 @@ from unified_debiasing.evaluation import evaluate_image_captioning
 
 # CSV files to evaluate — add or remove paths as needed
 RESULTS_FILES = [
-    "results/clip_cap_baseline.csv",
-    "results/clipcap_debiased.csv",
+    # "results/clip_cap_baseline.csv",
+    # "results/clipcap_debiased.csv",
+    # "results/clipcap_debiased_sfid_debiased.csv",
+    "results/clip_cap_sfid_['decoder']_50_50_0.9_features.csv",
+    # "results/clip_cap_sfid_['decoder', 'encoder']_50_50_0.9_features.csv"
 ]
+
+# Note: In your evaluation.py, find the line where it saves the CSV:
+# eval_results_path = os.path.join(os.path.dirname(file_path), "eval_results.csv")
+# CHANGE "eval_results.csv" to "eval_results_3.csv"
 
 # Set to the COCO val2014 image directory to enable CLIPScore, or None to skip
 COCO_IMG_DIR = None  # e.g. "data/COCO/images/val2014"
 
 # Set to True to run SPICE (slow, requires Java, but pre-computed once not 200x)
-RUN_SPICE = False
+RUN_SPICE = True
 
 # ─────────────────────────────────────────────────────────────────────────────
 
